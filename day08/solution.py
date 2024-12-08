@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-with open('input.txt', 'r') as f:
-  data = [list(x) for x in f.read().splitlines()]
-
-count_rows = len(data)
-count_cols = len(data[0])
-
 
 class Coord():
 
@@ -67,22 +61,37 @@ class Coord():
     return self._val.__repr__()
 
   def simplify(self):
-    abs_vals = [
-      abs(self._val[0]),
-      abs(self._val[1]),
-    ]
-    large = max(abs_vals)
-    small = min(abs_vals)
-    remainder = large % small
-    while remainder:
-      large = max(small, remainder)
-      small = min(small, remainder)
-      remainder = large % small
+    abs_vals = [abs(self._val[0]), abs(self._val[1])]
+    large, small = (max(abs_vals), min(abs_vals))
+    while (remainder := large % small):
+      large, small = (max(small, remainder), min(small, remainder))
     gcd = small
     return Coord(
       self._val[0] // gcd,
       self._val[1] // gcd,
     )
+
+
+def draw_map(rows: int, cols: int, freq_map: dict, freq: str, props: list[str]):
+  print()
+  for ix_row in range(rows):
+    line = ''
+    for ix_col in range(cols):
+      coord = Coord(ix_row, ix_col)
+      if any(coord in freq_map[x] for x in props):
+        line += '#'
+      elif coord in freq_map['antennas']:
+        line += freq
+      else:
+        line += '.'
+    print(line)
+
+
+with open('input.txt', 'r') as f:
+  data = [list(x) for x in f.read().splitlines()]
+
+count_rows = len(data)
+count_cols = len(data[0])
 
 freq_maps = {
   frequency: {
@@ -113,20 +122,8 @@ for freq, freq_map in freq_maps.items():
           # print(f'{freq=} {antinode=}')
           freq_map['antinodes'].add(antinode)
 
-# # draw maps
-# for freq, freq_map in freq_maps.items():
-#   print()
-#   for ix_row in range(count_rows):
-#     line = ''
-#     for ix_col in range(count_cols):
-#       coord = Coord(ix_row, ix_col)
-#       if coord in freq_map['antinodes']:
-#         line += '#'
-#       elif coord in freq_map['antennas']:
-#         line += freq
-#       else:
-#         line += '.'
-#     print(line)
+for freq, freq_map in freq_maps.items():
+  draw_map(count_rows, count_cols, freq_map, freq, ['antinodes'])
 
 antinodes = {c for m in freq_maps.values() for c in m['antinodes']}
 
@@ -138,11 +135,10 @@ for freq, freq_map in freq_maps.items():
   for antenna_a in freq_map['antennas']:
     for antenna_b in freq_map['antennas']:
       if antenna_a == antenna_b: continue
-
-      delta_a = (antenna_b - antenna_a).simplify()
-      delta_b = (antenna_a - antenna_b).simplify()
-
-      for antenna, delta in ((antenna_a, delta_a), (antenna_b, delta_b)):
+      for antenna, delta in (
+        (antenna_a, (antenna_b - antenna_a).simplify()),
+        (antenna_b, (antenna_a - antenna_b).simplify()),
+      ):
         multiplier = 1
         while True:
           antinode = antenna + (delta * multiplier)
@@ -153,20 +149,8 @@ for freq, freq_map in freq_maps.items():
           else:
             break
 
-# draw maps
 for freq, freq_map in freq_maps.items():
-  print()
-  for ix_row in range(count_rows):
-    line = ''
-    for ix_col in range(count_cols):
-      coord = Coord(ix_row, ix_col)
-      if coord in freq_map['antinodes_2']:
-        line += '#'
-      elif coord in freq_map['antennas']:
-        line += freq
-      else:
-        line += '.'
-    print(line)
+  draw_map(count_rows, count_cols, freq_map, freq, ['antinodes_2'])
 
 antinodes2 = {c for m in freq_maps.values() for c in m['antinodes_2']}
 print(f'part 2 {len(antinodes2)=}')
