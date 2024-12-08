@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import math
 
 with open('input.txt', 'r') as f:
   data = [list(x) for x in f.read().splitlines()]
@@ -68,12 +67,22 @@ class Coord():
     return self._val.__repr__()
 
   def simplify(self):
-    divisor = math.gcd(self._val[0], self._val[1])
+    abs_vals = [
+      abs(self._val[0]),
+      abs(self._val[1]),
+    ]
+    large = max(abs_vals)
+    small = min(abs_vals)
+    remainder = large % small
+    while remainder:
+      large = max(small, remainder)
+      small = min(small, remainder)
+      remainder = large % small
+    gcd = small
     return Coord(
-      self._val[0] // divisor,
-      self._val[1] // divisor,
+      self._val[0] // gcd,
+      self._val[1] // gcd,
     )
-
 
 freq_maps = {
   frequency: {
