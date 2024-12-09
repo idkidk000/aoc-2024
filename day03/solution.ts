@@ -1,3 +1,5 @@
+#!/usr/bin/env -S deno --allow-read
+
 // const DEBUG = true;
 const DEBUG = false;
 
