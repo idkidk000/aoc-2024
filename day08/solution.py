@@ -78,10 +78,10 @@ def draw_map(rows: int, cols: int, freq_map: dict, freq: str, props: list[str]):
     line = ''
     for ix_col in range(cols):
       coord = Coord(ix_row, ix_col)
-      if any(coord in freq_map[x] for x in props):
-        line += '#'
-      elif coord in freq_map['antennas']:
+      if coord in freq_map['antennas']:
         line += freq
+      elif any(coord in freq_map[x] for x in props):
+        line += '#'
       else:
         line += '.'
     print(line)
