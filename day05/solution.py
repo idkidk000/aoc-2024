@@ -18,6 +18,7 @@ for update in updates:
     if rule[0] in update and rule[1] in update:
       if update.index(rule[0]) > update.index(rule[1]):
         correct_order = False
+        break
   if correct_order:
     sum_middle += update[int((len(update) - 1) / 2)]
   else:
