@@ -58,7 +58,7 @@ Object.entries(frequencies).forEach(([frequency, props]) => {
 });
 if (DEBUG) console.debug({ frequencies });
 
-const allAntinodes = Object.entries(frequencies).reduce((acc, [frequency, props]) => {
+const allAntinodes = Object.entries(frequencies).reduce((acc, [_, props]) => {
   for (const [hash, antinode] of props.antinodes) {
     acc.set(hash, antinode);
   }
@@ -66,3 +66,30 @@ const allAntinodes = Object.entries(frequencies).reduce((acc, [frequency, props]
 }, new Map<number, Coord>());
 if (DEBUG) console.debug({ allAntinodes, countRows, countCols });
 console.log('part 1', allAntinodes.size);
+
+Object.entries(frequencies).forEach(([frequency, props]) => {
+  if (DEBUG) console.debug({ frequency, props });
+  props.antinodes.clear();
+  for (const [hash0, antenna0] of props.antennas) {
+    for (const [hash1, antenna1] of props.antennas) {
+      if (hash0 == hash1) continue;
+      const baseOffset = new Coord(antenna1.row - antenna0.row, antenna1.col - antenna0.col);
+      for (let i = countRows * -1; i < countRows; i++) {
+        const antinode = new Coord(antenna0.row + baseOffset.row * i, antenna0.col + baseOffset.col * i);
+        if (antinode.row >= 0 && antinode.row < countRows && antinode.col >= 0 && antinode.col < countCols) {
+          props.antinodes.set(antinode.hash(), antinode);
+        }
+      }
+    }
+  }
+});
+if (DEBUG) console.debug({ frequencies });
+
+const allAntinodes2 = Object.entries(frequencies).reduce((acc, [_, props]) => {
+  for (const [hash, antinode] of props.antinodes) {
+    acc.set(hash, antinode);
+  }
+  return acc;
+}, new Map<number, Coord>());
+if (DEBUG) console.debug({ allAntinodes2, countRows, countCols });
+console.log('part 2', allAntinodes2.size);
