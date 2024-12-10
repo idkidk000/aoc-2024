@@ -8,6 +8,9 @@ class Coord {
   hash(): number {
     return this.row * 10000000 + this.col;
   }
+  validate(maxRow: number, maxCol: number): boolean {
+    return this.row >= 0 && this.row < maxRow && this.col >= 0 && this.col < maxCol;
+  }
 }
 
 const text = await Deno.readTextFile(EXAMPLE ? 'example.txt' : 'input.txt');
@@ -50,10 +53,7 @@ for (let nextValue = 1; nextValue < 10; nextValue++) {
       );
       // if (DEBUG) console.debug('test', { coord, dirIx, coordNext });
       if (
-        coordNext.row >= 0 &&
-        coordNext.row < countRows &&
-        coordNext.col >= 0 &&
-        coordNext.col < countCols &&
+        coordNext.validate(countRows, countCols) &&
         !trail.has(coordNext.hash()) &&
         mapData[coordNext.row][coordNext.col] == nextValue
       ) {

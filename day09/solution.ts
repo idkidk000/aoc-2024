@@ -1,7 +1,6 @@
 #!/usr/bin/env -S deno --allow-read
 
 const DEBUG = false;
-// const DEBUG = false;
 
 const text = await Deno.readTextFile('input.txt');
 if (DEBUG) console.debug('text', text);
@@ -10,11 +9,9 @@ const FREE_SPACE = Infinity; //possible deno bug - array of length>=100 containi
 
 const diskMap = text
   .split('')
-  .filter((char) => char.trim() != '')
+  .filter((char) => char.trim())
   .map((char) => parseInt(char))
-  .map((length, ix) => {
-    return new Array(length).fill(ix % 2 ? FREE_SPACE : Math.round(ix / 2));
-  })
+  .map((length, ix) => new Array(length).fill(ix % 2 ? FREE_SPACE : ix / 2))
   .flat();
 if (DEBUG) console.debug('diskMap', diskMap);
 
