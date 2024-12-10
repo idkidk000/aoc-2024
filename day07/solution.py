@@ -7,7 +7,7 @@ print(f'{data=}')
 total = 0
 for item in data:
   target = item[0]
-  results = []
+  results: list[int] = []
   for value in item[1:]:
     if len(results) == 0:
       results = [value]
