@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno --allow-read
 
-const DEBUG = true;
+const DEBUG = false;
 // const DEBUG = false;
 
 const text = await Deno.readTextFile('input.txt');
@@ -70,5 +70,5 @@ const part2 = (diskMap: number[]) => {
   console.log('part 2', checksum);
 };
 
-// part1([...diskMap]);
+part1([...diskMap]);
 part2([...diskMap]);
