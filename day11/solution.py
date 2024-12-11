@@ -2,7 +2,7 @@
 import time
 from collections import Counter
 
-DEBUG = False
+DEBUG = True
 EXAMPLE = False
 
 
