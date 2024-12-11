@@ -8,23 +8,28 @@ const text = await Deno.readTextFile(EXAMPLE ? 'example.txt' : 'input.txt');
 if (DEBUG) console.debug({ text });
 
 class NumberCounter {
-  constructor() {}
   private counts: Record<string, number> = {};
-  add(value: number | string, count: number) {
+  private total: number = 0;
+  constructor(values: number[] | string[] = []) {
+    for (const value of values) {
+      this.add(value);
+    }
+  }
+  add(value: number | string, count: number = 1): void {
     const valueString = typeof value === 'string' ? value : String(value);
     if (DEBUG) console.debug({ value, valueString, count });
     this.counts[valueString] = (this.counts[valueString] ?? 0) + count;
+    this.total += count;
   }
-  totalCount() {
-    return Object.values(this.counts).reduce((acc, count) => acc + count, 0);
+  totalCount(): number {
+    return this.total;
   }
-  entries() {
+  entries(): [string, number][] {
     return Object.entries(this.counts);
   }
 }
 
-let counts = new NumberCounter();
-text.split(/\s+/).forEach((value) => counts.add(value, 1));
+let counts = new NumberCounter(text.split(/\s+/));
 if (DEBUG) console.debug({ counts });
 
 for (let iteration = 0; iteration < ITERATIONS; iteration++) {
