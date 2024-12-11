@@ -37,16 +37,14 @@ func part2(data string){
 	for _,match:=range matches{
 		// fmt.Printf("match: %v\n", match)
 		switch match[1]{
-			case "do()":
-			enable=true
-			case "don't()":
-			enable=false
-		default:
-			if (enable){
-				valA,_:=strconv.Atoi(match[2])
-				valB,_:=strconv.Atoi(match[3])
-				total+=valA*valB
-			}
+			case "do()": enable=true
+			case "don't()": enable=false
+			default:
+				if (enable){
+					valA,_:=strconv.Atoi(match[2])
+					valB,_:=strconv.Atoi(match[3])
+					total+=valA*valB
+				}
 		}
 	}
 	fmt.Printf("part 2: %d\n",total)
