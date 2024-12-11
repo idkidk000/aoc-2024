@@ -10,12 +10,36 @@ import (
 )
 
 func main(){
-	f,_:=os.Open("input.txt")
+	left,right:=readData("input.txt")
+	part1(left,right)
+	part2(left,right)
+}
+
+func part2(left[]int,right[]int){
+	rightCounts:=make(map[int]int)
+	for _,rightValue:=range right{
+		rightCounts[rightValue]++
+	}
+	simTotal:=0
+	for _,leftValue:=range left{
+		simTotal+=leftValue*rightCounts[leftValue]
+	}
+	fmt.Printf("part 2 %d\n",simTotal)
+}
+
+func part1(left[]int,right[]int){
+	total:=0
+	for ix:=range left{
+		total+=int(math.Abs(float64(left[ix]-right[ix])))
+	}
+	fmt.Printf("part 1 %d\n",total)
+}
+
+func readData(filename string)(left []int, right []int){
+	f,_:=os.Open(filename)
 	defer f.Close()
 	scanner:=bufio.NewScanner(f)
 	scanner.Split(bufio.ScanWords)
-	left:=[]int{}
-	right:=[]int{}
 	ix:=0;
 	for scanner.Scan(){
 		parsed,_:=strconv.Atoi(scanner.Text())
@@ -28,20 +52,5 @@ func main(){
 	}
 	slices.Sort(left)
 	slices.Sort(right)
-	// fmt.Println(left)
-	// fmt.Println(right)
-	total:=0
-	rightCounts:=make(map[int]int)
-	for ix:=0;ix<len(left);ix++{
-		total+=int(math.Abs(float64(left[ix]-right[ix])))
-		rightCounts[right[ix]]+=1
-	}
-	fmt.Printf("part 1 %d\n",total)
-	// fmt.Println(rightCounts)
-	simTotal:=0
-	for ix:=0;ix<len(left);ix++{
-		simTotal+=(left[ix]*rightCounts[left[ix]])
-	}
-	fmt.Printf("part 2 %d\n",simTotal)
-
+	return
 }
