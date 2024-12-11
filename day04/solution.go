@@ -50,7 +50,6 @@ func part2(data[][]string){
 			if (wordA=="MS" || wordA=="SM") && (wordB=="MS" || wordB=="SM"){
 				wordCount++
 			}
-
 		}
 	}
 	fmt.Printf("part 2 %d\n",wordCount)
