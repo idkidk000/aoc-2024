@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+DEBUG = False
+
 with open('input.txt', 'r') as f:
   data = f.read()
 
@@ -36,9 +38,9 @@ for update in unsorted_updates:
         if update.index(rule[0]) > update.index(rule[1]):
           temp = [x for x in update if x != rule[0]]
           temp.insert(temp.index(rule[1]), rule[0])
-          print(f'move {rule[0]} before {rule[1]}')
+          if DEBUG: print(f'move {rule[0]} before {rule[1]}')
           update = temp
           moved = True
-  print(f'{orig=} {update=}')
+  if DEBUG: print(f'{orig=} {update=}')
   sum_middle += update[int((len(update) - 1) / 2)]
 print(f'part 2 {sum_middle=}')

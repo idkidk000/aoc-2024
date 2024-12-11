@@ -1,5 +1,9 @@
 package main
 
+/*
+	TODO: use https://pkg.go.dev/golang.org/x/exp/slices instead of reinventing the wheel
+*/
+
 import (
 	"bufio"
 	"fmt"

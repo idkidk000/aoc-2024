@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno --allow-read
 
-const DEBUG = true;
-// const DEBUG = false;
+// const DEBUG = true;
+const DEBUG = false;
 
 const data = await Deno.readTextFile('input.txt');
 if (DEBUG) console.debug(data);
