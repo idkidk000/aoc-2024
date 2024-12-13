@@ -55,10 +55,14 @@ func part2(grid[][]string,startCoord Coord){
 
 	loopCount:=0
 	for boxCoord:=range guardPath{
-		// deep copy so that updates dont corrupt the grid
 		var testGrid[][]string
-		for _,row:=range grid{
-			testGrid=append(testGrid,append([]string(nil),row...))
+		for ixRow,row:=range grid{
+			if ixRow==boxCoord.row{
+				// deep copy so that updates dont corrupt the grid
+				testGrid=append(testGrid,append([]string(nil),row...))
+			} else {
+				testGrid = append(testGrid, row)
+			}
 		}
 		testGrid[boxCoord.row][boxCoord.col]="#"
 		testPath:=map[CoordAndDir]bool{}
@@ -79,7 +83,7 @@ func part2(grid[][]string,startCoord Coord){
 					foundPath,_:=testPath[nextCoordAndDir]
 					if foundPath{
 						loopCount++
-						fmt.Println("loop",loopCount,"at box",boxCoord)
+						// fmt.Println("loop",loopCount,"at box",boxCoord)
 						break
 					}
 					testPath[nextCoordAndDir]=true;
@@ -91,7 +95,6 @@ func part2(grid[][]string,startCoord Coord){
 			}
 		}
 	}
-	// BUG: off by one - should be 1719, get 1720
 	fmt.Println("part 2:",loopCount,"len guardPath",len(guardPath))
 }
 

@@ -22,6 +22,7 @@ for section in text.lower().replace(' ', '').replace('=', '').split('\n\n'):
 
 
 def solve(offset: int = 0):
+  started = time.monotonic()
   total_cost = 0
   problem_count = 0
   solved_count = 0
