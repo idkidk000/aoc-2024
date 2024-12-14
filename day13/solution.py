@@ -2,7 +2,7 @@
 import math
 import time
 
-DEBUG = True
+DEBUG = False
 EXAMPLE = False
 
 with open('example.txt' if EXAMPLE else 'input.txt', 'r') as f:
