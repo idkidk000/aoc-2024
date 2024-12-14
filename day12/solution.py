@@ -15,6 +15,7 @@ col_count = len(grid[0])
 # don't double-count walked coords
 walked = [[False] * col_count for _ in range(row_count)]
 
+# i think this could also be solved by walking the perimeter with similar logic to the guard thing and storing a tuple of x,y,dir in a set. each time we have to turn is a corner, which is the same as the count of sides
 
 def walk(row_ix: int, col_ix: int) -> tuple[int, int, set[tuple[int, int, int]]]:
   walked[row_ix][col_ix] = True
