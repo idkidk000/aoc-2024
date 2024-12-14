@@ -73,7 +73,12 @@ def solve(offset: int = 0):
 def fast_solve(offset: int = 0):
   # https://youtube.com/watch?v=-5J-DAsWuJc
   # there's actually only one or zero solutions to each problem so it can be solved as a linear equation
-  started = time.monotonic()
+  # intersection of two lines
+  #   a with origin 0,0 and angle button_a
+  #   b with origin target and angle button_b
+  # the intersection point/a=mult
+  # target-intersection/b=mult_b
+
   total_cost = 0
   for machine in machines:
     tx = machine['target']['x'] + offset
@@ -87,14 +92,12 @@ def fast_solve(offset: int = 0):
     mult_b = (tx - ax * mult_a) / bx
 
     valid = (mult_a > 0 or mult_b > 0) and mult_a % 1 == mult_b % 1 == 0
-    cost = mult_a * 3 + mult_b
+    cost = int(mult_a * 3 + mult_b)
 
     if valid:
       if DEBUG: print(f'{tx=} {ty=} {ax=} {ay=} {bx=} {by=} {valid=} {mult_a=:.0f} {mult_b=:.0f} {cost=:.0f}')
       total_cost += cost
-
-  elapsed = time.monotonic() - started
-  print(f'{offset=} {elapsed=:,.3f} {total_cost=}')
+  print(f'{offset=} {total_cost=}')
   if offset == 0: assert total_cost == 36250
   return int(total_cost)
 
