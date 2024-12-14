@@ -39,17 +39,14 @@ def draw_map(data: list[dict[str, int]], size_x: int, size_y: int, label: str):
 
 
 def part2(data: list[dict[str, int]], size_x: int, size_y: int):
-  connected_target = len(data) * .75
-  max_connected = connected_target / 2
-  i = 0
-  while True:
+  connected_target = len(data) * .7
+  for i in range(1, size_x * size_y + 1):
     map_data = [[' ' for x in range(size_x)] for y in range(size_y)]
     count_connected = 0
     for item in data:
       item['pos_x'] = (item['pos_x'] + item['vel_x']) % size_x
       item['pos_y'] = (item['pos_y'] + item['vel_y']) % size_y
       map_data[item['pos_y']][item['pos_x']] = '#'
-    i += 1
     for y, line in enumerate(map_data):
       for x, char in enumerate(line):
         if char == '#':
@@ -59,14 +56,13 @@ def part2(data: list[dict[str, int]], size_x: int, size_y: int):
             if 0 <= test_x < size_x and 0 <= test_y < size_y and map_data[test_y][test_x] == '#':
               count_connected += 1
               break
-    if count_connected >= min(connected_target, max_connected):
-      max_connected = max(max_connected, count_connected)
+    if count_connected >= connected_target:
       print('\n'.join(''.join(line) for line in map_data))
-      print(f'found {i=} {count_connected=} {max_connected=}')
+      print(f'found {i=} {count_connected=}')
       print()
       _ = input()
     elif i < 100 or i % 1000 == 0:
-      print(f'{i=} {count_connected=} {max_connected=}')
+      print(f'{i=} {count_connected=}')
 
 
 def part1(data: list[dict[str, int]], size_x: int, size_y: int, iterations: int):
@@ -75,12 +71,12 @@ def part1(data: list[dict[str, int]], size_x: int, size_y: int, iterations: int)
     item['pos_x'] = (item['pos_x'] + item['vel_x'] * iterations) % size_x
     item['pos_y'] = (item['pos_y'] + item['vel_y'] * iterations) % size_y
     quad = None
-    if item['pos_x'] < int(size_x / 2):
-      if item['pos_y'] < int(size_y / 2): quad = 0
-      elif item['pos_y'] > int(size_y / 2): quad = 1
-    elif item['pos_x'] > int(size_x / 2):
-      if item['pos_y'] < int(size_y / 2): quad = 2
-      elif item['pos_y'] > int(size_y / 2): quad = 3
+    if item['pos_x'] < (size_x - 1) // 2:
+      if item['pos_y'] < (size_y - 1) // 2: quad = 0
+      elif item['pos_y'] > (size_y - 1) // 2: quad = 1
+    elif item['pos_x'] > (size_x - 1) // 2:
+      if item['pos_y'] < (size_y - 1) // 2: quad = 2
+      elif item['pos_y'] > (size_y - 1) // 2: quad = 3
 
     logging.debug(f'{size_x=} {size_y=} {item=} {quad=}')
     if quad is not None: quad_counts[quad] += 1
