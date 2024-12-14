@@ -15,7 +15,7 @@ type Machine struct{
 func main(){
 	// data:=readData("example.txt")
 	data:=readData("input.txt")
-	fmt.Println(data)
+	// fmt.Println(data)
 	solve(data,0)
 	solve(data,10000000000000)
 }
