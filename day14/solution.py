@@ -40,7 +40,7 @@ def draw_map(data: list[dict[str, int]], size_x: int, size_y: int, label: str):
 
 def part2(data: list[dict[str, int]], size_x: int, size_y: int):
   connected_target = len(data) * .75
-  max_connected = connected_target / 3
+  max_connected = connected_target / 2
   i = 0
   while True:
     map_data = [[' ' for x in range(size_x)] for y in range(size_y)]
@@ -61,9 +61,8 @@ def part2(data: list[dict[str, int]], size_x: int, size_y: int):
               break
     if count_connected >= min(connected_target, max_connected):
       max_connected = max(max_connected, count_connected)
-      for line in map_data:
-        print(''.join(line))
-      print(f'{i=} {count_connected=} {max_connected=}')
+      print('\n'.join(''.join(line) for line in map_data))
+      print(f'found {i=} {count_connected=} {max_connected=}')
       print()
       _ = input()
     elif i < 100 or i % 1000 == 0:
