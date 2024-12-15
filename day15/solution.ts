@@ -203,10 +203,11 @@ const part2 = (mapText: string, moves: string[]) => {
   let moveId = 0;
   for (const move of moves) {
     moveId++;
+    const DEBUG = [14087, 14088].includes(moveId);
     const { offsetRow, offsetCol } = getOffset(move);
     const newRow = row + offsetRow;
     const newCol = col + offsetCol;
-    if (DEBUG) console.debug({ moveId, row, col, move, offsetRow, offsetCol, newRow, newCol });
+    // if (DEBUG) console.debug({ moveId, row, col, move, offsetRow, offsetCol, newRow, newCol });
     const charAt = mapData[newRow][newCol];
     switch (charAt) {
       case '.':
@@ -251,8 +252,12 @@ const part2 = (mapText: string, moves: string[]) => {
           if (DEBUG) console.debug({ success, boxCoords });
           if (success) {
             if (boxCoords.length == 0) throw new Error('boxCoords cannot be empty');
-            // TODO: may need to sort depending on the walkVertBoxes function. would nbeed to order based ofn offsetRow
-            for (const [boxRow, boxCol] of boxCoords.toReversed()) {
+
+            // BUG: these can be out of order
+            const sortedBoxCoords = boxCoords.toSorted((a, b) => (a[0] - b[0] || a[1] - b[1]) * offsetRow * -1);
+
+            // for (const [boxRow, boxCol] of boxCoords.toReversed()) {
+            for (const [boxRow, boxCol] of sortedBoxCoords) {
               if (DEBUG) console.debug({ boxRow, boxCol });
               mapData[boxRow + offsetRow][boxCol] = mapData[boxRow][boxCol];
               mapData[boxRow][boxCol] = '.';
@@ -269,14 +274,15 @@ const part2 = (mapText: string, moves: string[]) => {
       default:
         throw new Error(`invalid map char ${charAt} at ${newRow},${newCol}`);
     }
-    if (DEBUG) printMap(mapData);
+    // if (DEBUG) printMap(mapData);
     // if (moveId > 15) break;
     // console.log(moveId);
     // printMap(mapData);
     // console.log(`${moveId}: ${hashMap(mapData)}`);
     // break;
-    // Deno.writeTextFile(`maps/ts_${String(moveId).padStart(5, '0')}.txt`, mapData.flat().join(''));
-    if ([14087, 14088, 14089].includes(moveId)) {
+    Deno.writeTextFile(`maps/ts_${String(moveId).padStart(5, '0')}.txt`, mapData.flat().join(''));
+    if (DEBUG) {
+      // there's a bug in box moving
       console.log({ moveId, row, col, move });
       printMap(mapData, 30, 40, 0, 30);
     }
@@ -285,7 +291,7 @@ const part2 = (mapText: string, moves: string[]) => {
     (rowAcc, row, rowIx) => (rowAcc += row.reduce((colAcc, char, colIx) => (colAcc += char == '[' ? rowIx * 100 + colIx : 0), 0)),
     0
   );
-  // console.log('part 2:', gpsTotal);
+  console.log('part 2:', gpsTotal);
 };
 
 // part1(blocks[0], moves);
