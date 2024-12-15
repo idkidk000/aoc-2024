@@ -84,6 +84,8 @@ def part2(sections: list[str]):
               pos_row += move_row
               pos_col += move_col
               map_data[pos_row][pos_col] = '@'
+              break
+
           case '[' | ']':
 
             if DEBUG: print(f'box {test_char} at {test_row=} {test_col=}')
@@ -107,7 +109,7 @@ def part2(sections: list[str]):
             break
 
       test_cols = new_test_cols
-      if wall: break
+      if wall or len(new_test_cols) == 0: break
 
       # boxes are going to be difficult
       # test_col now needs to become test_cols
@@ -211,5 +213,5 @@ def part1(sections: list[str]):
   print(f'part 1: {gps_sum}')
 
 
-# part1(sections)
+part1(sections)
 part2(sections)
