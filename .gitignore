@@ -1,10 +1,19 @@
-# Ignore all
+# files without extensions - i.e. compiled binaries
+
+# ignore all
 *
-
-# Unignore all with extensions
+# unignore all with extensions
 !*.*
-
-# Unignore all dirs
+# unignore all dirs
 !*/
 
+
+# rust permenant
 target/
+
+
+# rust temporary while i get it working properly in my ide
+src/
+/Cargo.lock
+/Cargo.toml
+day01/solution.rs
