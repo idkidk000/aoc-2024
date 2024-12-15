@@ -17,3 +17,4 @@ src/
 /Cargo.lock
 /Cargo.toml
 day01/solution.rs
+day15/maps/

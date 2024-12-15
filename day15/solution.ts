@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno --allow-read
-// deno-lint-ignore-file no-case-declarations no-fallthrough
+// deno-lint-ignore-file no-case-declarations
 
 // const DEBUG = true;
 const DEBUG = false;
@@ -9,7 +9,7 @@ const DEBUG = false;
 // const FILENAME = 'example4.txt';
 const FILENAME = 'input.txt';
 
-console.log(FILENAME);
+// console.log(FILENAME);
 const text = await Deno.readTextFile(FILENAME);
 // if (DEBUG) console.debug({ text });
 const blocks = text.split('\n\n');
@@ -17,9 +17,12 @@ const blocks = text.split('\n\n');
 const moves = blocks[1].split('').filter((char) => char.trim() != '');
 // if (DEBUG) console.debug({ moves });
 
-const printMap = (mapData: string[][]) => {
-  for (const row of mapData) {
-    console.log(row.join(''));
+const printMap = (mapData: string[][], rowFrom: number = 0, rowTo: number = -1, colFrom: number = 0, colTo: number = -1) => {
+  let rowIx = rowFrom;
+  for (const row of mapData.slice(rowFrom, rowTo == -1 ? undefined : rowTo)) {
+    const rowIxStr = String(rowIx).padStart(3, '0');
+    console.log(`${rowIxStr} ${row.slice(colFrom, colTo == -1 ? undefined : colTo).join('')}`);
+    rowIx++;
   }
 };
 
@@ -124,6 +127,8 @@ const walkVertBoxes = (
   col: number,
   offset: number
 ): { boxCoords: number[][]; success: boolean } => {
+  // recursive horrors
+  // i think duplication is unavoidable using this approach
   let boxCoords: number[][] = [];
   let success = true;
   switch (mapData[row][col]) {
@@ -131,7 +136,6 @@ const walkVertBoxes = (
       success = false;
       break;
     case '[':
-      // possible BUG: this might add duplicate entries
       const { boxCoords: llBoxCoords, success: llSuccess } = walkVertBoxes(mapData, row + offset, col, offset);
       const { boxCoords: lrBoxCoords, success: lrSuccess } = walkVertBoxes(mapData, row + offset, col + 1, offset);
       success = success && llSuccess && lrSuccess;
@@ -155,6 +159,21 @@ const walkVertBoxes = (
     if (count > 1) throw new Error(`duplicate boxCoords ${outer} count=${count}`);
   }
   return { boxCoords, success };
+};
+
+const hashMap = (mapData: string[][]): number => {
+  // for comparing with the python implementation to see where things diverge
+  const MOD_L = Math.pow(2, 31) - 1; // a large prime
+  const MOD_S = Math.pow(2, 17) - 1; // a smaller prime
+  return mapData.reduce((rowAcc, row, rowIx) => {
+    const rowVal = row.reduce((charAcc, char, charIx) => {
+      const charVal = Math.pow(charIx + 1, char == '#' ? 3 : char == '.' ? 5 : char == '[' ? 7 : char == ']' ? 11 : 13) % MOD_S;
+      // console.debug('rowIx=', rowIx, 'charIx=', charIx, 'char=', char, 'charVal=', charVal);
+      return (charAcc * charVal) % MOD_S;
+    }, 1);
+    // console.debug('rowIx=', rowIx, 'rowVal=', rowVal);
+    return (rowAcc * rowVal) % MOD_S;
+  }, 1);
 };
 
 const part2 = (mapText: string, moves: string[]) => {
@@ -252,12 +271,21 @@ const part2 = (mapText: string, moves: string[]) => {
     }
     if (DEBUG) printMap(mapData);
     // if (moveId > 15) break;
+    // console.log(moveId);
+    // printMap(mapData);
+    // console.log(`${moveId}: ${hashMap(mapData)}`);
+    // break;
+    // Deno.writeTextFile(`maps/ts_${String(moveId).padStart(5, '0')}.txt`, mapData.flat().join(''));
+    if ([14087, 14088, 14089].includes(moveId)) {
+      console.log({ moveId, row, col, move });
+      printMap(mapData, 30, 40, 0, 30);
+    }
   }
   const gpsTotal = mapData.reduce(
     (rowAcc, row, rowIx) => (rowAcc += row.reduce((colAcc, char, colIx) => (colAcc += char == '[' ? rowIx * 100 + colIx : 0), 0)),
     0
   );
-  console.log('part 2:', gpsTotal);
+  // console.log('part 2:', gpsTotal);
 };
 
 // part1(blocks[0], moves);

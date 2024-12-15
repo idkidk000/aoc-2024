@@ -13,7 +13,24 @@ with open(FILENAME, 'r') as f:
 sections = text.split('\n\n')
 # if DEBUG: print(f'{sections=}')
 
-print(f'{FILENAME=}')
+# print(f'{FILENAME=}')
+
+
+def hash_map(map_data: list[list[str]]) -> int:
+  MOD_L = (2**31) - 1
+  MOD_S = (2**17) - 1
+  row_acc = 1
+  for row_ix, row in enumerate(map_data):
+    char_acc = 1
+    for char_ix, char in enumerate(row):
+      char_val = (
+        (char_ix + 1)**(3 if char == '#' else 5 if char == '.' else 7 if char == '[' else 11 if char == ']' else 13)
+      ) % MOD_S
+      # print(f'{row_ix=} {char_ix=} {char=} {char_val=}')
+      char_acc = (char_acc * char_val) % MOD_S
+    # print(f'{row_ix=} {char_acc=}')
+    row_acc = (row_acc * char_acc) % MOD_S
+  return row_acc
 
 
 def part2(sections: list[str]):
@@ -129,6 +146,10 @@ def part2(sections: list[str]):
       print(f'{move_ix} END {move=} {pos_row=} {pos_col=}')
       print_map()
 
+    # print(f'{move_ix+1}: {hash_map(map_data)}')
+    with open(f'maps/py_{move_ix+1:05d}.txt', 'w') as f:
+      f.write(''.join([''.join(r) for r in map_data]))
+
   gps_sum = 0
   for ix_row in range(len_rows):
     for ix_col in range(len_cols):
@@ -213,5 +234,5 @@ def part1(sections: list[str]):
   print(f'part 1: {gps_sum}')
 
 
-part1(sections)
+# part1(sections)
 part2(sections)
