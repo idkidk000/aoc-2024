@@ -79,18 +79,19 @@ const solve = (mapData: string[][]) => {
     const nextPaths = [];
     for (const path of paths) {
       if (path.done) {
+        // keep pushing completed paths to the active list until completion condition met
         nextPaths.push(path);
         continue;
       }
-      for (let j = -1; j < 2; j++) {
+      for (const turn of [0, -1, 1]) {
         // rotate and move
-        const dir = (((path.dir + j) % 4) + 4) % 4;
-        const cost = 1 + (j == 0 ? 0 : 1000);
+        const dir = (((path.dir + turn) % 4) + 4) % 4;
+        const cost = 1 + (turn == 0 ? 0 : 1000);
         const nextPos = new Tuple([
           path.pos.value[0] + (dir == 0 ? -1 : dir == 2 ? 1 : 0),
           path.pos.value[1] + (dir == 3 ? -1 : dir == 1 ? 1 : 0),
         ]);
-        if (DEBUG) console.debug({ i, j, path, dir, cost, nextPos });
+        // if (DEBUG) console.debug({ i, turn, path, dir, cost, nextPos });
 
         // discard on loop
         if (path.hist.has(nextPos.hash())) continue;
@@ -101,12 +102,15 @@ const solve = (mapData: string[][]) => {
 
         // discard on more expensive
         const posCost = posCosts.get(nextPos.hash());
+
         if (typeof posCost !== 'undefined') {
           if (posCost > path.cost + cost) {
             posCosts.set(nextPos.hash(), path.cost + cost);
-            // TODO: reduce optimisation for part 2 since we need more paths to complete
-          } else if (posCost <= path.cost + cost + 3001) {
-            break;
+            // reduce optimisation for part 2 since we need more paths to complete
+          } else if (posCost + 2001 <= path.cost + cost) {
+            // console.log({ posCost, cost, path, nextPos });
+            continue;
+            // throw new Error('expensive');
           }
         } else {
           posCosts.set(nextPos.hash(), path.cost + cost);
@@ -120,27 +124,48 @@ const solve = (mapData: string[][]) => {
           dir,
           path.cost + cost
         );
+        // console.log(`valid from=${path.pos.value} turn=${turn} to=${nextPath.pos.value} cost=${nextPath.cost}`);
         // and push it to the next iteration
         nextPaths.push(nextPath);
       }
     }
     if (nextPaths.length == 0) {
+      // either the map is impossible (remember start direction is right) or there's a bug
       throw new Error('no more valid paths');
     }
-    if (DEBUG) console.debug({ i, nextPaths });
+    // console.log(`i=${i} nextPathLen=${nextPaths.length}`);
+    // if (DEBUG) console.debug({ i, nextPaths });
     paths = nextPaths;
     if (paths.every((path) => path.done)) break;
   }
+  //TODO: temporarily reversed order for debugging
   const sortedPaths = paths.filter((path) => path.done).sort((a, b) => a.cost - b.cost);
   const lowestCost = sortedPaths[0].cost;
   console.log('part 1:', lowestCost);
   const bestPaths = sortedPaths.filter((path) => path.cost == lowestCost);
-  const bestPathTiles = new Map(...bestPaths.map((path) => path.hist.entries()).flat());
 
-  for (const bestPathTile of bestPathTiles.values()) {
-    mapData[bestPathTile.value[0]][bestPathTile.value[1]] = 'O';
+  // this is correct, there are multiple best paths
+  if (DEBUG) {
+    for (const path of bestPaths) {
+      const mapData2 = JSON.parse(JSON.stringify(mapData));
+      console.log(path);
+      for (const tile of path.hist.values()) {
+        mapData2[tile.value[0]][tile.value[1]] = 'O';
+      }
+      printMap(mapData2);
+    }
   }
-  printMap(mapData);
+
+  const bestPathTiles = new Map(bestPaths.flatMap((path) => Array.from(path.hist.entries())));
+
+  if (DEBUG) {
+    const mapData2 = JSON.parse(JSON.stringify(mapData));
+    for (const bestPathTile of bestPathTiles.values()) {
+      mapData2[bestPathTile.value[0]][bestPathTile.value[1]] = 'O';
+    }
+    console.debug('merged tile map');
+    printMap(mapData2);
+  }
 
   console.log('part 2:', bestPathTiles.size);
 };
