@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-
 import sys
 
 sys.setrecursionlimit(1_000_000)
-
 DEBUG = False
 FILENAME = 'example.txt'
-
-with open(FILENAME, 'r') as f:
-  text = f.read()
-# if DEBUG: print(f'{text=}')
 
 for arg in sys.argv[1:]:
   if arg == '-i': FILENAME = 'input.txt'
@@ -40,53 +34,69 @@ for r in range(rows):
 
 assert start_at is not None and end_at is not None
 
+lowest_cost_per_pos: dict[tuple[int, int], int] = {}
+lowest_end_cost = None
+
 
 def walk_maze(path: dict) -> list:
+  # FIXME: this takes 1m on e3 and idk how long on input
+  global lowest_end_cost
   ret_paths = []
   if path['done']:
     return [path]
   for i in range(3):
 
-    # turn on i== 0 or 1
-    direc = (path['dir'] + (-1 if i == 0 else 1 if i == 1 else 0)) % 4
-    cost = path['cost'] + (1 if i == 2 else 1001)
+    # turn on i== 1 or 2
+    direc = (path['dir'] + (-1 if i == 1 else 1 if i == 2 else 0)) % 4
+    cost = path['cost'] + (1 if i == 0 else 1001)
 
     # try move
-    row = path['pos'][0] + (-1 if direc == 0 else 1 if direc == 2 else 0)
-    col = path['pos'][1] + (-1 if direc == 3 else 1 if direc == 1 else 0)
-    pos = (row, col)
+    pos = (
+      path['pos'][0] + (-1 if direc == 0 else 1 if direc == 2 else 0),
+      path['pos'][1] + (-1 if direc == 3 else 1 if direc == 1 else 0),
+    )
 
-    if 0 <= row < rows and 0 <= col < cols and pos not in path['hist']:
-      map_char = map_data[row][col]
-      match map_char:
-        case '#':
-          continue
-        case 'E' | '.':
-          # clone path and update new_path
-          if DEBUG: print(f'''{path=} {i=} {cost=}''')
-          new_path = {
-            'hist': {*path['hist'], pos},
-            'done': False,
-            'cost': cost,
-            'pos': pos,
-            'dir': direc,
-          }
-          if map_char == 'E':
-            # done, add to ret_paths
-            new_path['done'] = True
-            ret_paths.append(new_path)
-          else:
-            # walk and add results to ret_paths
-            for walked_path in walk_maze(new_path):
-              # for x in ret_paths:
-              #   assert len(walked_path['hist'].intersection(x['hist'])) > 0 or walked_path['dir'] != x['dir']
-              ret_paths.append(walked_path)
-        case _:
-          raise Exception(f'invalid map char {map_char=} at {row=} {col=}')
+    map_char = map_data[pos[0]][pos[1]]
+    if map_char not in ['.', 'E'] or pos in path['hist']:
+      continue
 
-  if len(ret_paths) > 0:
-    path_lens = [len(x['hist']) for x in ret_paths]
-    print(f'{len(ret_paths)=} {path_lens=}')
+    # optimisation: discard path if we reached the end for cheaper
+    if lowest_end_cost is not None and cost >= lowest_end_cost:
+      continue
+    # optimisation: discard path if we got here cheaper some other way
+    if pos in lowest_cost_per_pos:
+      if lowest_cost_per_pos[pos] <= cost:
+        continue
+    else:
+      lowest_cost_per_pos[pos] = cost
+
+    # move is valid - clone path and update
+    if DEBUG: print(f'''{path=} {i=} {cost=}''')
+    new_path = {
+      'hist': {*path['hist'], pos},
+      'done': False,
+      'cost': cost,
+      'pos': pos,
+      'dir': direc,
+    }
+    if map_char == 'E':
+      # done, add to ret_paths
+      new_path['done'] = True
+      ret_paths.append(new_path)
+      if lowest_end_cost is None:
+        lowest_end_cost = cost
+      else:
+        lowest_end_cost = min(lowest_end_cost, cost)
+    else:
+      # walk and add results to ret_paths
+      for walked_path in walk_maze(new_path):
+        # for x in ret_paths:
+        #   assert len(walked_path['hist'].intersection(x['hist'])) > 0 or walked_path['dir'] != x['dir']
+        ret_paths.append(walked_path)
+
+  # if len(ret_paths) > 0:
+  #   path_lens = [len(x['hist']) for x in ret_paths]
+  #   print(f'{len(ret_paths)=} {path_lens=}')
   return ret_paths
 
 
@@ -131,5 +141,6 @@ if DEBUG:
     # _ = input()
   print(f'{len(paths)=}')
 
+print(f'{lowest_cost_per_pos=}')
 lowest_cost = min((x['cost'] for x in paths))
 print(f'part 1: {lowest_cost=}')
