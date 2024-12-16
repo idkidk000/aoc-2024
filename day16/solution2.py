@@ -38,6 +38,8 @@ lowest_cost_per_pos: dict[tuple[int, int], int] = {}
 lowest_end_cost = None
 
 
+# maybe this should be refactored as a while True loop where each path is duplicated and incremented on each turn. then the first to finish is probably the cheapest?
+
 def walk_maze(path: dict) -> list:
   # FIXME: this takes 1m on e3 and idk how long on input
   global lowest_end_cost
