@@ -84,125 +84,33 @@ def run_program(program: list[int], registers: dict[str, int]):
 part1 = run_program(program, registers)
 print(f'part 1: {part1}')
 
-# part 2 brute force. there's almost certainly a big brain way of doing this
-# i think something to do with the output values and which registers affect them and how the initial registers can be changed so those values are still produced. e.g. reg%8 means we can keep adding 8 to that reg and it won't affect the output. each output number adds a new constraint
-# as a less big-brain improvement, the brute force can be multiprocessed
-
-
-def run_program_wrapper(program: list[int], registers: dict[str, int], a_start: int, count: int, wanted_result: str):
-  started = time.monotonic()
-  for i in range(a_start, a_start + count):
-    result = run_program(program, registers | {'a': i})
-    if result.endswith(wanted_result):
-      return {
-        'match': result == wanted_result,
-        'a': i,
-        'a_b': bin(i),
-        'wanted': wanted_result,
-      }
-  return {
-    'match': False,
-    'a_start': a_start,
-    'count': count,
-    'duration': round(time.monotonic() - started, 3),
-    'wanted': wanted_result
-  }
-
-
-for p in program:
-  print(run_program_wrapper(program, registers, 0, 256, str(p)))
-
-# solve for each output individually then concat the 3 digit binary a's where last a is on the left and first is on the right
-# print(run_program_wrapper(program, registers, 0, 2048, '3'))
-
-print(f'{program=}')
-print(
-  run_program(
-    program,
-    registers | {
-      'a':
-      int(
-        ''.join(
-          [
-            '011',  #3->0 ok
-            '000',  #0->3 ok
-            '100',  #4->5 ok
-            '100',  #4->5 ok
-
-            # manually went through these one by one to arrive at 108048353364378. which is too high :|
-
-            # 3
-            '010',
-            # 4
-            '011',
-            # 6
-            '110',
-            # 1
-            '111',
-            # 3
-            '101',
-            # 0
-            '110',
-            # 5
-            '001',
-            # 7
-            '000',
-            # 5
-            '100',
-            # 1
-            '110',
-            # 4
-            '011',
-            # 2
-            '010',
 
 
 
-            # '010',  #2->1 ok
-            # '000',  #0->3 ok
-            # '011',  #3->0 ok
-            # '100',  #4->5 ok
-            # # 7
-            # '100',  #4->5
-            # '010',  #2->1
-            # # 4
-            # '001',  #1->2
-          ]
-        ),
-        2
-      )
-    }
-  )
-)
+wanted_final=','.join([str(x) for x in program])
 
-# # print(run_program(program, registers | {'a': 518}))
-# for i in range(1, len(program) + 1):
-#   print(run_program_wrapper(program, registers, 0, 1000000000, ','.join([str(x) for x in program[-i:]])))
+a_bins:set[str]={f'{x:03b}' for x in range(8)}
+final_a_bins:set[str]=set()
+for p in range(len(program)-1,-1,-1):
+  wanted=','.join([str(x) for x in program[p:]])
+  if DEBUG: print(f'{p=} {wanted=} {a_bins=}')
+  for a_bin in a_bins.copy():
+    for i in range(8):
+      i_bin=f'{a_bin}{i:03b}'
+      i_int=int(i_bin,2)
+      result=run_program(program,registers|{'a':i_int})
+      if result==wanted:
+        if DEBUG: print(f'{a_bin=} {i_bin=} {i_int=} {result=}')
+        a_bins.add(i_bin)
+      if result==wanted_final:
+        final_a_bins.add(i_bin)
+    a_bins.remove(a_bin)
 
-# A_START = 367_200_000
-# A_END = 1_000_000_000
-# BATCH_SIZE = 100_000
-# wanted_result = ','.join([str(x) for x in program])
-# executor = concurrent.futures.ProcessPoolExecutor(max_workers=8)
-# futures = [
-#   executor.submit(
-#     run_program_wrapper,
-#     program,
-#     registers,
-#     i,
-#     BATCH_SIZE,
-#     wanted_result,
-#   ) for i in range(A_START, A_END, BATCH_SIZE)
-# ]
-# print('futures submitted')
-# for future in concurrent.futures.as_completed(futures):
-#   result = future.result()
-#   if result['match']:
-#     print('part 2:', result)
-#     break
-#   else:
-#     print('working', result)
 
-# executor.shutdown(wait=False, cancel_futures=True)
+if DEBUG: print(f'{final_a_bins=}')
+int_as=sorted([int(x,2) for x in final_a_bins])
+for x in int_as:
+  if DEBUG: print(f'{x:,.0f}   {x}')
 
-run_program(program,registers|{'a':108048353364378})
+print(f'part 2: {int_as[0]}')
+
