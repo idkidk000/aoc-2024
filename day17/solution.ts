@@ -114,9 +114,9 @@ const part2 = (program: number[]) => {
     const wantedResult = JSON.stringify(program.slice(instruction));
     if (DEBUG) console.debug({ instruction, wantedResult, len: inputs.length });
     for (const prevInput of inputs) {
-      for (let bit = 0n; bit < 8n; bit++) {
-        const newInput = (prevInput << 3n) + bit;
-        if (newInput < 0n) throw new Error(`newInput has overflowed newInput=${newInput} prevInput=${prevInput} bit=${bit}`);
+      for (let byte = 0n; byte < 8n; byte++) {
+        const newInput = (prevInput << 3n) + byte;
+        if (newInput < 0n) throw new Error(`newInput has overflowed newInput=${newInput} prevInput=${prevInput} byte=${byte}`);
         const registers = {
           a: newInput,
           b: 0n,
@@ -124,7 +124,7 @@ const part2 = (program: number[]) => {
         } as Registers;
         const result = JSON.stringify(runProgram(program, registers));
         if (result == wantedResult) {
-          // if (DEBUG) console.debug({ prevInput, bit, newInput, result });
+          // if (DEBUG) console.debug({ prevInput, byte, newInput, result });
           nextInputs.push(newInput);
         }
       }
