@@ -57,7 +57,7 @@ def run_program(program: list[int], registers: dict[str, int]):
         # reg_a = reg_a // (2**combo_operand(operand))
         reg_a = reg_a >> combo_operand(operand)
       case 1:  #bxl
-        reg_b = reg_b ^ operand
+        reg_b ^= operand
       case 2:  #bst
         # reg_b = combo_operand(operand) % 8
         reg_b = combo_operand(operand) & 7
@@ -65,7 +65,7 @@ def run_program(program: list[int], registers: dict[str, int]):
         if reg_a != 0:
           pointer = operand
       case 4:  #bxc
-        reg_b = reg_b ^ reg_c
+        reg_b ^= reg_c
       case 5:  #out
         # output.append(combo_operand(operand) % 8)
         output.append(combo_operand(operand) & 7)
@@ -113,4 +113,3 @@ for x in int_as:
   if DEBUG: print(f'{x:,.0f}   {x}')
 
 print(f'part 2: {int_as[0]}')
-

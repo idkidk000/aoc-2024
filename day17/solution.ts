@@ -129,9 +129,7 @@ const part2 = (program: number[]) => {
         }
       }
     }
-    if (nextInputs.length == 0) {
-      throw new Error('no inputs found');
-    }
+    if (nextInputs.length == 0) throw new Error('no inputs found');
     inputs = nextInputs;
   }
   const lowestInput = inputs.toSorted()[0];
