@@ -12,9 +12,9 @@ const text = await Deno.readTextFile(FILENAME);
 if (DEBUG) console.debug({ text });
 
 interface Registers {
-  a: number;
-  b: number;
-  c: number;
+  a: bigint;
+  b: bigint;
+  c: bigint;
 }
 
 const sections = text.split('\n\n');
@@ -24,7 +24,7 @@ const registers = sections[0]
   .filter((line) => line.trim())
   .reduce<Registers>((acc, line) => {
     const [k, v] = line.split(':');
-    acc[k.toLowerCase() as keyof Registers] = parseInt(v);
+    acc[k.toLowerCase() as keyof Registers] = BigInt(v);
     return acc;
   }, {} as Registers);
 if (DEBUG) console.debug({ registers });
@@ -41,7 +41,7 @@ const runProgram = (program: number[], registers: Registers) => {
   let c = registers.c;
   if (DEBUG) console.debug({ registers, a, b, c });
 
-  const combo = (operand: number, a: number, b: number, c: number) => {
+  const combo = (operand: number, a: bigint, b: bigint, c: bigint) => {
     switch (operand) {
       case 4:
         return a;
@@ -52,7 +52,7 @@ const runProgram = (program: number[], registers: Registers) => {
       case 7:
         throw new Error(`invalid combo ${operand}`);
       default:
-        return operand;
+        return BigInt(operand);
     }
   };
 
@@ -68,19 +68,19 @@ const runProgram = (program: number[], registers: Registers) => {
         a = a >> combo(operand, a, b, c);
         break;
       case 1: //bxl
-        b = b ^ operand;
+        b = b ^ BigInt(operand);
         break;
       case 2: //bst
-        b = combo(operand, a, b, c) & 7;
+        b = combo(operand, a, b, c) & 7n;
         break;
       case 3: //jnz
-        if (a != 0) pointer = operand;
+        if (a != 0n) pointer = Number(operand);
         break;
       case 4: //bxc
         b = b ^ c;
         break;
       case 5: //out
-        output.push(combo(operand, a, b, c) & 7);
+        output.push(Number(combo(operand, a, b, c) & 7n));
         break;
       case 6: //bdv
         b = a >> combo(operand, a, b, c);
@@ -108,18 +108,19 @@ const part1Result = runProgram(program, registers);
 console.log('part 1:', JSON.stringify(part1Result));
 
 const part2 = (program: number[]) => {
-  let inputs = Array.from({ length: 8 }, (_, i) => i);
+  let inputs = Array.from({ length: 8 }, (_, i) => BigInt(i));
   for (let instruction = program.length - 1; instruction > -1; instruction--) {
-    const nextInputs: number[] = [];
+    const nextInputs: bigint[] = [];
     const wantedResult = JSON.stringify(program.slice(instruction));
     if (DEBUG) console.debug({ instruction, wantedResult, len: inputs.length });
     for (const prevInput of inputs) {
-      for (let bit = 0; bit < 8; bit++) {
-        const newInput = (prevInput << 3) + bit;
+      for (let bit = 0n; bit < 8n; bit++) {
+        const newInput = (prevInput << 3n) + bit;
+        if (newInput < 0n) throw new Error(`newInput has overflowed newInput=${newInput} prevInput=${prevInput} bit=${bit}`);
         const registers = {
           a: newInput,
-          b: 0,
-          c: 0,
+          b: 0n,
+          c: 0n,
         } as Registers;
         const result = JSON.stringify(runProgram(program, registers));
         if (result == wantedResult) {
