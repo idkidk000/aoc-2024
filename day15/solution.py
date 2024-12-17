@@ -6,31 +6,13 @@ DEBUG = False
 # FILENAME = 'example2.txt'
 # FILENAME = 'example3.txt'
 FILENAME = 'input.txt'
+# print(f'{FILENAME=}')
 
 with open(FILENAME, 'r') as f:
   text = f.read()
 # if DEBUG: print(f'{text=}')
 sections = text.split('\n\n')
 # if DEBUG: print(f'{sections=}')
-
-# print(f'{FILENAME=}')
-
-
-def hash_map(map_data: list[list[str]]) -> int:
-  MOD_L = (2**31) - 1
-  MOD_S = (2**17) - 1
-  row_acc = 1
-  for row_ix, row in enumerate(map_data):
-    char_acc = 1
-    for char_ix, char in enumerate(row):
-      char_val = (
-        (char_ix + 1)**(3 if char == '#' else 5 if char == '.' else 7 if char == '[' else 11 if char == ']' else 13)
-      ) % MOD_S
-      # print(f'{row_ix=} {char_ix=} {char=} {char_val=}')
-      char_acc = (char_acc * char_val) % MOD_S
-    # print(f'{row_ix=} {char_acc=}')
-    row_acc = (row_acc * char_acc) % MOD_S
-  return row_acc
 
 
 def part2(sections: list[str]):
@@ -128,27 +110,9 @@ def part2(sections: list[str]):
       test_cols = new_test_cols
       if wall or len(new_test_cols) == 0: break
 
-      # boxes are going to be difficult
-      # test_col now needs to become test_cols
-      # test_cols should start as a list of the col above/below us but get extended when we encounter a box
-      # free space should should remove that col from test_cols
-      # loop until wall or len(test_cols)==0 or move_col==0
-      # horizontal
-      #   need to move all the array items between pos and free space along by one
-      # vertical
-      #   space test:
-      #     check above/below box parts of each box encountered
-      #     store all box part coords in a list
-      #   move:
-      #     loop over list in reverse, set old position to empty, new to old value
-
     if DEBUG:
       print(f'{move_ix} END {move=} {pos_row=} {pos_col=}')
       print_map()
-
-    # print(f'{move_ix+1}: {hash_map(map_data)}')
-    with open(f'maps/py_{move_ix+1:05d}.txt', 'w') as f:
-      f.write(''.join([''.join(r) for r in map_data]))
 
   gps_sum = 0
   for ix_row in range(len_rows):
@@ -234,5 +198,5 @@ def part1(sections: list[str]):
   print(f'part 1: {gps_sum}')
 
 
-# part1(sections)
+part1(sections)
 part2(sections)

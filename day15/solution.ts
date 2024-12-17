@@ -8,8 +8,8 @@ const DEBUG = false;
 // const FILENAME = 'example3.txt';
 // const FILENAME = 'example4.txt';
 const FILENAME = 'input.txt';
-
 // console.log(FILENAME);
+
 const text = await Deno.readTextFile(FILENAME);
 // if (DEBUG) console.debug({ text });
 const blocks = text.split('\n\n');
@@ -161,21 +161,6 @@ const walkVertBoxes = (
   return { boxCoords, success };
 };
 
-const hashMap = (mapData: string[][]): number => {
-  // for comparing with the python implementation to see where things diverge
-  const MOD_L = Math.pow(2, 31) - 1; // a large prime
-  const MOD_S = Math.pow(2, 17) - 1; // a smaller prime
-  return mapData.reduce((rowAcc, row, rowIx) => {
-    const rowVal = row.reduce((charAcc, char, charIx) => {
-      const charVal = Math.pow(charIx + 1, char == '#' ? 3 : char == '.' ? 5 : char == '[' ? 7 : char == ']' ? 11 : 13) % MOD_S;
-      // console.debug('rowIx=', rowIx, 'charIx=', charIx, 'char=', char, 'charVal=', charVal);
-      return (charAcc * charVal) % MOD_S;
-    }, 1);
-    // console.debug('rowIx=', rowIx, 'rowVal=', rowVal);
-    return (rowAcc * rowVal) % MOD_S;
-  }, 1);
-};
-
 const part2 = (mapText: string, moves: string[]) => {
   const mapData = mapText
     .split('\n')
@@ -203,7 +188,6 @@ const part2 = (mapText: string, moves: string[]) => {
   let moveId = 0;
   for (const move of moves) {
     moveId++;
-    const DEBUG = [14087, 14088].includes(moveId);
     const { offsetRow, offsetCol } = getOffset(move);
     const newRow = row + offsetRow;
     const newCol = col + offsetCol;
@@ -253,10 +237,9 @@ const part2 = (mapText: string, moves: string[]) => {
           if (success) {
             if (boxCoords.length == 0) throw new Error('boxCoords cannot be empty');
 
-            // BUG: these can be out of order
+            // these can be out of order
             const sortedBoxCoords = boxCoords.toSorted((a, b) => (a[0] - b[0] || a[1] - b[1]) * offsetRow * -1);
 
-            // for (const [boxRow, boxCol] of boxCoords.toReversed()) {
             for (const [boxRow, boxCol] of sortedBoxCoords) {
               if (DEBUG) console.debug({ boxRow, boxCol });
               mapData[boxRow + offsetRow][boxCol] = mapData[boxRow][boxCol];
@@ -269,22 +252,9 @@ const part2 = (mapText: string, moves: string[]) => {
             mapData[row][col] = '@';
           }
         }
-
         break;
       default:
         throw new Error(`invalid map char ${charAt} at ${newRow},${newCol}`);
-    }
-    // if (DEBUG) printMap(mapData);
-    // if (moveId > 15) break;
-    // console.log(moveId);
-    // printMap(mapData);
-    // console.log(`${moveId}: ${hashMap(mapData)}`);
-    // break;
-    Deno.writeTextFile(`maps/ts_${String(moveId).padStart(5, '0')}.txt`, mapData.flat().join(''));
-    if (DEBUG) {
-      // there's a bug in box moving
-      console.log({ moveId, row, col, move });
-      printMap(mapData, 30, 40, 0, 30);
     }
   }
   const gpsTotal = mapData.reduce(
@@ -294,5 +264,5 @@ const part2 = (mapText: string, moves: string[]) => {
   console.log('part 2:', gpsTotal);
 };
 
-// part1(blocks[0], moves);
+part1(blocks[0], moves);
 part2(blocks[0], moves);
