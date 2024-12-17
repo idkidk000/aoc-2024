@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import concurrent.futures
 
 sys.setrecursionlimit(1_000_000)
 
@@ -58,7 +59,6 @@ def run_program(program: list[int], registers: dict[str, int]):
         registers['b'] = combo_operand(operand) % 8
       case 3:  #jnz
         if registers['a'] != 0:
-          #TODO: validate
           pointer = operand
       case 4:  #bxc
         registers['b'] = registers['b'] ^ registers['c']
@@ -77,14 +77,48 @@ def run_program(program: list[int], registers: dict[str, int]):
 part1 = run_program(program, registers)
 print(f'part 1: {part1}')
 
-# part 2 brust force. there's almost certainly a big brain way of doing this
+# part 2 brute force. there's almost certainly a big brain way of doing this
 # i think something to do with the output values and which registers affect them and how the initial registers can be changed so those values are still produced. e.g. reg%8 means we can keep adding 8 to that reg and it won't affect the output. each output number adds a new constraint
-i = 0
+# as a less big-brain improvement, the brute force can be multiprocessed
+
 wanted_result = ','.join([str(x) for x in program])
-while True:
-  result = run_program(program, registers | {'a': i})
-  if DEBUG: print(f'{i=} {wanted_result=} {result=}')
-  if result == wanted_result:
-    print(f'part 2: {i=}')
+
+
+def run_program_wrapper(program: list[int], registers: dict[str, int], a_start: int, count: int):
+  for i in range(a_start, a_start + count):
+    result = run_program(program, registers | {'a': i})
+    if result == wanted_result:
+      return {
+        'match': result == wanted_result,
+        'a': i,
+      }
+  return {
+    'match': False,
+    'a_start': a_start,
+    'count': count,
+  }
+
+
+A_START = 10_000_000
+A_END = 1_000_000_000
+BATCH_SIZE = 100_000
+executor = concurrent.futures.ProcessPoolExecutor(max_workers=8)
+futures = [
+  executor.submit(
+    run_program_wrapper,
+    program,
+    registers,
+    i,
+    BATCH_SIZE,
+  ) for i in range(0, A_END, BATCH_SIZE)
+]
+print('futures submitted')
+for future in concurrent.futures.as_completed(futures):
+  result = future.result()
+  if result['match']:
+    print('part 2:', result)
     break
-  i += 1
+  else:
+    print('working', result)
+
+executor.shutdown(wait=False, cancel_futures=True)
