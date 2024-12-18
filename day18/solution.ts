@@ -38,36 +38,31 @@ const drawMap = (mapData: string[][]) => {
 };
 
 class Coord {
-  public hash: string;
+  public hash;
   constructor(public x: number, public y: number) {
-    this.hash = `${x},${y}`;
-    // this.hash = JSON.stringify([x, y]);
+    this.hash = x * 1000 + y;
   }
 }
 
 class Path {
-  public history: Map<string, Coord> = new Map();
+  public history: number[] = [];
   public current!: Coord;
-  constructor(public start: Coord) {
-    this.push(start);
+  constructor(public start: Coord, noInit: boolean = false) {
+    if (!noInit) this.push(start);
   }
   len() {
-    return this.history.size - 1;
+    return this.history.length - 1;
   }
   push(coord: Coord) {
-    if (this.history.has(coord.hash)) return false;
-    this.history.set(coord.hash, coord);
+    if (this.history.includes(coord.hash)) return false;
+    this.history.push(coord.hash);
     this.current = coord;
     return true;
   }
   clone() {
-    const newPath = new Path(this.start);
-    newPath.history = new Map(this.history.entries());
-    // const histItems = Array.from(this.history.entries());
-    // const newPath = new Path(histItems[0][1]);
-    // for (const histItem of histItems.slice(1)) {
-    //   newPath.push(histItem[1]);
-    // }
+    const newPath = new Path(this.start, true);
+    newPath.history = [...this.history];
+    newPath.current = this.current;
     return newPath;
   }
 }
@@ -77,7 +72,7 @@ const getShortestPath = (mapData: string[][], startX: number, startY: number, en
   const lenY = mapData.length;
   const end = new Coord(endX, endY);
   let paths = [new Path(new Coord(startX, startY))];
-  const shortestPaths: Map<string, number> = new Map();
+  const shortestPaths: Map<number, number> = new Map();
   const nextPaths: Path[] = [];
   for (let i = 0; i < lenX * lenY; i++) {
     for (const path of paths) {
@@ -159,15 +154,14 @@ const part2 = (blocks: number[][]) => {
     default:
       throw new Error(`add lenX,lenY case for filename ${FILENAME}`);
   }
-  //TODO: probably quicker to loop backwards?
   // for (let blockCount = 1024; blockCount < blocks.length; blockCount++) {
   for (let blockCount = blocks.length; blockCount > 0; blockCount--) {
     const blockSlice = blocks.slice(0, blockCount);
-    console.log({ blockCount, len: blockSlice.length });
+    if (DEBUG) console.debug({ blockCount, len: blockSlice.length });
     const mapData = genMap(lenX, lenY, blockSlice);
-    if (DEBUG) drawMap(mapData);
+    if (DEBUG > 1) drawMap(mapData);
     try {
-      const shortestPath = getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1);
+      getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1);
       console.log('part 2', blockCount + 1, blocks.slice(blockCount, blockCount + 1)[0]);
       break;
     } catch {
