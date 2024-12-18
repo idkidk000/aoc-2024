@@ -113,14 +113,14 @@ def part1():
 
 
 def part2():
-  for block_count in range(1024, len(blocks)):
-    print(f'{block_count=}')
+  for block_count in range(len(blocks), 0, -1):
+    if DEBUG: print(f'{block_count=}')
     map_data = gen_map(blocks[:block_count])
     # draw_map(map_data)
     # exit()
     paths = walk_map(map_data, (0, 0), (len_x - 1, len_y - 1))
-    if len(paths) == 0: break
-  print(f'part 2 {blocks[block_count-1]} {block_count=}')
+    if len(paths) > 0: break
+  print(f'part 2 {blocks[block_count]} {block_count=}')
 
 
 # draw_map(gen_map(blocks[:12]))
