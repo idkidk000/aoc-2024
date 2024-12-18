@@ -7,6 +7,12 @@ const FILENAME = Deno.args.reduce(
   'example.txt'
 );
 console.log({ FILENAME, DEBUG });
+const D4 = [
+  [-1, 0],
+  [0, 1],
+  [1, 0],
+  [0, -1],
+];
 
 const text = await Deno.readTextFile(FILENAME);
 if (DEBUG > 1) console.debug({ text });

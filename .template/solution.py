@@ -4,6 +4,7 @@ import sys
 sys.setrecursionlimit(1_000_000)
 DEBUG = False
 FILENAME = 'example.txt'
+D4 = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 for arg in sys.argv[1:]:
   if arg == '-i': FILENAME = 'input.txt'

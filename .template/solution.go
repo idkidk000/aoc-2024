@@ -11,7 +11,9 @@ type Coord struct {
 	x, y int
 }
 
+
 func main() {
+	// d4:=[][]int{{-1, 0},{0, 1},{1, 0},{0, -1}}
 	filename,debug:=parseArgs()
 	fmt.Printf("filename: %s; debug: %d\n", filename, debug)
 	data := readData(filename)
