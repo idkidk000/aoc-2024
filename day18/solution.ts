@@ -40,7 +40,8 @@ const drawMap = (mapData: string[][]) => {
 class Coord {
   public hash: string;
   constructor(public x: number, public y: number) {
-    this.hash = JSON.stringify([x, y]);
+    this.hash = `${x},${y}`;
+    // this.hash = JSON.stringify([x, y]);
   }
 }
 
@@ -60,11 +61,13 @@ class Path {
     return true;
   }
   clone() {
-    const histItems = Array.from(this.history.entries());
-    const newPath = new Path(histItems[0][1]);
-    for (const histItem of histItems.slice(1)) {
-      newPath.push(histItem[1]);
-    }
+    const newPath = new Path(this.start);
+    newPath.history = new Map(this.history.entries());
+    // const histItems = Array.from(this.history.entries());
+    // const newPath = new Path(histItems[0][1]);
+    // for (const histItem of histItems.slice(1)) {
+    //   newPath.push(histItem[1]);
+    // }
     return newPath;
   }
 }
@@ -103,7 +106,6 @@ const getShortestPath = (mapData: string[][], startX: number, startY: number, en
         }
         // TODO: don't think we need to handle shortestPath>path.len
 
-        // TODO: this might be a bit heavy
         const nextPath = path.clone();
         // returns false if duplicate
         if (!nextPath.push(nextCoord)) continue;
