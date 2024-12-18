@@ -48,7 +48,7 @@ class Path {
   public history: number[] = [];
   public current!: Coord;
   constructor(public start: Coord, noInit: boolean = false) {
-    if (!noInit) this.push(start);
+    noInit || this.push(start);
   }
   len() {
     return this.history.length - 1;
@@ -149,8 +149,8 @@ const part2 = (blocks: number[][]) => {
     default:
       throw new Error(`add lenX,lenY case for filename ${FILENAME}`);
   }
-  // for (let blockCount = 1024; blockCount < blocks.length; blockCount++) {
-  const mapData = genMap(lenX, lenY, blocks);
+
+  /*   const mapData = genMap(lenX, lenY, blocks);
   for (let blockCount = blocks.length - 1; blockCount > -1; blockCount--) {
     const blockCoord = blocks[blockCount];
     mapData[blockCoord[0]][blockCoord[1]] = false;
@@ -160,7 +160,22 @@ const part2 = (blocks: number[][]) => {
       console.log('part 2', blockCount + 1, blockCoord);
       break;
     }
+  } */
+
+  // refactored as a binary search to so there are far fewer iterations (it's still slower than python looping over every one)
+  let low = 1024;
+  let high = blocks.length - 1;
+  while (low < high) {
+    const mid = Math.floor((high + low) / 2);
+    if (DEBUG) console.debug({ low, high, mid });
+    const mapData = genMap(lenX, lenY, blocks.slice(0, mid));
+    if (getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1) > -1) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
   }
+  console.log('part 2:', low, blocks[low - 1]);
 };
 
 part1(blocks);
