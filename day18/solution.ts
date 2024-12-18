@@ -18,20 +18,20 @@ const blocks = text
 if (DEBUG) console.debug({ blocks });
 
 const genMap = (lenX: number, lenY: number, blocks: number[][]) => {
-  const mapData = Array.from({ length: lenX }, () => Array.from({ length: lenY }).fill('.')) as string[][];
+  const mapData = Array.from({ length: lenX }, () => Array.from({ length: lenY }).fill(false)) as boolean[][];
   for (const block of blocks) {
-    mapData[block[0]][block[1]] = '#';
+    mapData[block[0]][block[1]] = true;
   }
   return mapData;
 };
 
-const drawMap = (mapData: string[][]) => {
+const drawMap = (mapData: boolean[][]) => {
   const lenX = mapData[0].length;
   const lenY = mapData.length;
   for (let y = 0; y < lenY; y++) {
     const row = [`${String(y).padStart(3, ' ')}:  `];
     for (let x = 0; x < lenX; x++) {
-      row.push(mapData[x][y]);
+      row.push(mapData[x][y] ? '#' : '.');
     }
     console.debug(row.join(''));
   }
@@ -67,7 +67,7 @@ class Path {
   }
 }
 
-const getShortestPath = (mapData: string[][], startX: number, startY: number, endX: number, endY: number) => {
+const getShortestPath = (mapData: boolean[][], startX: number, startY: number, endX: number, endY: number) => {
   const lenX = mapData[0].length;
   const lenY = mapData.length;
   const end = new Coord(endX, endY);
@@ -83,13 +83,7 @@ const getShortestPath = (mapData: string[][], startX: number, startY: number, en
         );
 
         // oob or block
-        if (
-          nextCoord.x < 0 ||
-          nextCoord.x >= lenX ||
-          nextCoord.y < 0 ||
-          nextCoord.y >= lenY ||
-          mapData[nextCoord.x][nextCoord.y] == '#'
-        )
+        if (nextCoord.x < 0 || nextCoord.x >= lenX || nextCoord.y < 0 || nextCoord.y >= lenY || mapData[nextCoord.x][nextCoord.y])
           continue;
 
         // get/set shortestPaths, continue if not shortest
@@ -107,7 +101,7 @@ const getShortestPath = (mapData: string[][], startX: number, startY: number, en
 
         // return the completed path immediately
         if (nextCoord.hash == end.hash) {
-          return nextPath;
+          return nextPath.len();
         } else {
           nextPaths.push(nextPath);
         }
@@ -115,7 +109,8 @@ const getShortestPath = (mapData: string[][], startX: number, startY: number, en
     }
     paths = nextPaths;
   }
-  throw new Error('no path found');
+  // throw new Error('no path found');
+  return -1;
 };
 
 const part1 = (blocks: number[][]) => {
@@ -137,7 +132,7 @@ const part1 = (blocks: number[][]) => {
   const mapData = genMap(lenX, lenY, blocks.slice(0, blockCount));
   if (DEBUG) drawMap(mapData);
   const shortestPath = getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1);
-  console.log('part 1', shortestPath.len());
+  console.log('part 1', shortestPath);
 };
 
 const part2 = (blocks: number[][]) => {
@@ -155,18 +150,15 @@ const part2 = (blocks: number[][]) => {
       throw new Error(`add lenX,lenY case for filename ${FILENAME}`);
   }
   // for (let blockCount = 1024; blockCount < blocks.length; blockCount++) {
-  for (let blockCount = blocks.length; blockCount > 0; blockCount--) {
-    const blockSlice = blocks.slice(0, blockCount);
-    if (DEBUG) console.debug({ blockCount, len: blockSlice.length });
-    const mapData = genMap(lenX, lenY, blockSlice);
+  const mapData = genMap(lenX, lenY, blocks);
+  for (let blockCount = blocks.length - 1; blockCount > -1; blockCount--) {
+    const blockCoord = blocks[blockCount];
+    mapData[blockCoord[0]][blockCoord[1]] = false;
+    if (DEBUG) console.debug({ blockCount, blockCoord });
     if (DEBUG > 1) drawMap(mapData);
-    try {
-      getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1);
-      console.log('part 2', blockCount + 1, blocks.slice(blockCount, blockCount + 1)[0]);
+    if (getShortestPath(mapData, 0, 0, lenX - 1, lenY - 1) > -1) {
+      console.log('part 2', blockCount + 1, blockCoord);
       break;
-    } catch {
-      // console.log('part 2', blockCount, blocks.slice(blockCount - 1, blockCount)[0]);
-      // break;
     }
   }
 };
