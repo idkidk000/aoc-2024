@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno --allow-read
 
-const DEBUG = Deno.args.reduce((acc, item) => item == '-d' || acc, false);
+const DEBUG = Deno.args.reduce((acc, item) => (item == '-d' ? 1 : item == '-d2' ? 2 : item == '-d3' ? 3 : acc), 0);
 const FILENAME = Deno.args.reduce(
   (acc, item) =>
     item == '-i' ? 'input.txt' : item == '-e' ? 'example.txt' : item.startsWith('-e') ? `example${item.slice(-1)}.txt` : acc,
@@ -9,13 +9,13 @@ const FILENAME = Deno.args.reduce(
 console.log({ FILENAME, DEBUG });
 
 const text = await Deno.readTextFile(FILENAME);
-// if (DEBUG) console.debug({ text });
+if (DEBUG > 1) console.debug({ text });
 
 const mapData = text
   .split('\n')
   .filter((line) => line.trim())
   .map((line) => line.split(''));
-// if (DEBUG) console.debug({ mapData });
+if (DEBUG > 1) console.debug({ mapData });
 
 const getMapParams = (mapData: string[][]) => {
   const rows = mapData.length;
