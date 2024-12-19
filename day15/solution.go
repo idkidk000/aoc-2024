@@ -25,7 +25,7 @@ const mapBoxRight uint8 = 4
 func main() {
 	filename, debug := parseArgs()
 	fmt.Printf("filename: %s; debug: %d\n", filename, debug)
-	part1(filename, debug)
+	// part1(filename, debug)
 	part2(filename, debug)
 }
 
@@ -33,7 +33,7 @@ func part2(filename string, debug uint8) {
 	mapData, moves, start := readData(filename, true)
 	if debug > 0 {
 		// fmt.Println(mapData)
-		drawMap(mapData)
+		drawMap(mapData,start)
 		// fmt.Println(moves)
 		fmt.Println("start:", start)
 	}
@@ -65,37 +65,41 @@ func part2(filename string, debug uint8) {
 			break
 		case mapBoxLeft,mapBoxRight:
 			if move==moveLeft || move==moveRight {
-				/*
-					keep searching in offset until not box
-					rewrite the contents of everything between that point and us with box left or right based on distance+(0/1 direction offset)%2
-				*/
+				// keep searching in offset until not box
 				for isBox[mapData[testNext.y][testNext.x]] {
 					testNext.x+=offset.x
 				}
 				switch mapData[testNext.y][testNext.x] {
 				case mapFree:
-					//TODO: *think* i've squashed two off by ones here but need to test
+					if debug>1{
+						fmt.Println("move:",move,"about to move boxes horizontally")
+						drawMap(mapData,current)
+					}
 					for i:=min(current.x+offset.x,testNext.x);i<=max(current.x+offset.x,testNext.x);i++{
-						// coerce i from a fixed position to a distance, coerce offset.x from -1/1 to 0/1 then sum and uint mod 2 to get an index into the writeBox slice
-						//TODO: might need to reverse the offset -1/1 -> 0/1 to get the right index
-						mapData[current.y][i]=writeBox[(i-current.x+(offset.x+1)/2)&1]
+						// coerce i from a fixed position to a distance, coerce offset.x from -1/1 to -1/0 then sum and uint mod 2 to get an index into the writeBox slice
+						mapData[current.y][i]=writeBox[(i-current.x+(offset.x-1)/2)&1]
 					}
 					mapData[current.y][current.x] = mapFree
 					current.x += offset.x
 					mapData[current.y][current.x] = mapFree
+					if debug>1{
+						fmt.Println("moved boxes horizontally")
+						drawMap(mapData,current)
+					}
 				case mapWall:
 					break
 				}
 			} else {
-				boxesToMove:=[]Coord{{testNext.x,testNext.y}}
+				// using maps as both of these will get dupes otherwise
+				boxesToMove:=map[Coord]bool{{testNext.x,testNext.y}:true}
 				colsToResolve:=map[int]bool{testNext.x:true}
 				foundWall:=false
 				// set the initial states
 				if mapData[testNext.y][testNext.x]==mapBoxLeft{
-					boxesToMove = append(boxesToMove, Coord{testNext.x+1,testNext.y})
+					boxesToMove[Coord{testNext.x+1,testNext.y}]=true
 					colsToResolve[testNext.x+1]=true
 				} else {
-					boxesToMove = append(boxesToMove, Coord{testNext.x-1,testNext.y})
+					boxesToMove[Coord{testNext.x-1,testNext.y}]=true
 					colsToResolve[testNext.x-1]=true
 				}
 				// then loop until wall or free
@@ -109,11 +113,13 @@ func part2(filename string, debug uint8) {
 							case mapFree:
 								delete(colsToResolve,x)
 							case mapBoxLeft:
+								boxesToMove[Coord{x,testNext.y}]=true
+								boxesToMove[Coord{x+1,testNext.y}]=true
 								colsToResolve[x+1]=true
-								boxesToMove = append(boxesToMove, Coord{testNext.y,x}, Coord{testNext.y,x+1})
 							case mapBoxRight:
+								boxesToMove[Coord{x-1,testNext.y}]=true
+								boxesToMove[Coord{x,testNext.y}]=true
 								colsToResolve[x-1]=true
-								boxesToMove = append(boxesToMove, Coord{testNext.y,x-1}, Coord{testNext.y,x})
 						}
 					}
 				}
@@ -121,21 +127,32 @@ func part2(filename string, debug uint8) {
 					continue
 				}
 				// copy box map data to a map and set the old coords to mapFree
+				if debug>1{
+					fmt.Println("about to move boxes vertically",boxesToMove)
+					drawMap(mapData,current)
+				}
 				boxMapData:=map[Coord]uint8{}
-				for _,box:=range boxesToMove{
+				for box:=range boxesToMove{
 					boxMapData[box]=mapData[box.y][box.x]
 					mapData[box.y][box.x]=mapFree
+				}
+				if debug>1{
+					fmt.Println("boxMapData:",boxMapData)
 				}
 				// loop over the copied data and write to mapData+offset.y
 				for box,val:=range boxMapData{
 					mapData[box.y+offset.y][box.x]=val
 				}
 				current.y+=offset.y
+				if debug>1{
+					fmt.Println("moved boxes vertically")
+					drawMap(mapData,current)
+				}
 			}
 		}
 	}
 	if debug > 0 {
-		drawMap(mapData)
+		drawMap(mapData,current)
 		fmt.Println("current:", current)
 	}
 	gpsSum:=0
@@ -153,7 +170,7 @@ func part1(filename string, debug uint8) {
 	mapData, moves, start := readData(filename, false)
 	if debug > 0 {
 		// fmt.Println(mapData)
-		drawMap(mapData)
+		drawMap(mapData,start)
 		// fmt.Println(moves)
 		fmt.Println("start:", start)
 	}
@@ -192,7 +209,7 @@ func part1(filename string, debug uint8) {
 		}
 	}
 	if debug > 0 {
-		drawMap(mapData)
+		drawMap(mapData,current)
 		fmt.Println("current:", current)
 	}
 	gpsSum:=0
@@ -206,7 +223,7 @@ func part1(filename string, debug uint8) {
 	fmt.Println("part 1:",gpsSum)
 }
 
-func drawMap(mapData [][]uint8) {
+func drawMap(mapData [][]uint8,target Coord) {
 	mapObjects := map[uint8]string{
 		mapWall:     "#",
 		mapBox:      "O",
@@ -218,7 +235,11 @@ func drawMap(mapData [][]uint8) {
 		line := make([]string, len(row)+1)
 		line[0] = fmt.Sprintf("% 3d:  ", y)
 		for x, char := range row {
-			line[x+1] = mapObjects[char]
+			if target.x==x && target.y==y {
+				line[x+1] = "@"
+			} else {
+				line[x+1] = mapObjects[char]
+			}
 		}
 		fmt.Println(strings.Join(line, ""))
 	}
@@ -231,6 +252,8 @@ func parseArgs() (filename string, debug uint8) {
 		switch arg {
 		case "-i":
 			filename = "input.txt"
+		case "-e":
+			filename = "example.txt"
 		case "-e2":
 			filename = "example2.txt"
 		case "-e3":
