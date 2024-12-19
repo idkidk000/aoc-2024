@@ -25,13 +25,15 @@ func main() {
 	// part2(data)
 }
 
-func parseArgs() (filename string, debug int) {
+func parseArgs() (filename string, debug uint8) {
 	filename = "example.txt"
 	debug = 0
 	for _, arg := range os.Args[1:] {
 		switch arg {
 		case "-i":
 			filename = "input.txt"
+		case "-e":
+			filename = "example.txt"
 		case "-e2":
 			filename = "example2.txt"
 		case "-e3":
