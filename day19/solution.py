@@ -6,7 +6,6 @@ from functools import cache
 sys.setrecursionlimit(1_000_000)
 DEBUG = False
 FILENAME = 'example.txt'
-D4 = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 for arg in sys.argv[1:]:
   if arg == '-i': FILENAME = 'input.txt'
@@ -27,7 +26,7 @@ if DEBUG: print(f'{targets=}')
 
 @cache
 def walk(target: str, start: int, end: int):
-  # BUG: this isn't returning all possible solutions. probably an off by one
+  # BUG: this isn't returning all possible solutions when using the @cache decorator
   for i in range(end, start, -1):
     part = target[start:i]
     if DEBUG: print(f'  test {part=} {part in components}')
@@ -49,19 +48,3 @@ for target_ix, target in enumerate(targets):
     total_possible += 1
     break
 print(f'part 1: {total_possible=}')
-
-# total_possible = 0
-# total_solutions = 0
-# for target_ix, target in enumerate(targets):
-#   print(f'[{target_ix+1}/{len(targets)}] {target}')
-#   # getting duplication??
-#   # solutions = set(walk(target, 0, len(target)))
-#   solutions = walk(target, 0, len(target))
-#   for solution in solutions:
-#     print(f'  {solution}')
-#   print(f'  {len(solutions)=}')
-#   if len(solutions) > 0:
-#     total_possible += 1
-#   total_solutions += len(solutions)
-# print(f'part 1: {total_possible=}')
-# print(f'part 2: {total_solutions=}')
