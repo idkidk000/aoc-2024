@@ -34,11 +34,10 @@ func main() {
 		fmt.Println("start:",start,"end:",end)
 		drawMap(mapData,start)
 	}
-	part1(mapData,start,end,debug)
-	// part2(data)
+	solve(mapData,start,end,debug)
 }
 
-func part1(mapData[][]uint8,start Coord,end Coord,debug uint8){
+func solve(mapData[][]uint8,start Coord,end Coord,debug uint8){
 	startDir:=1;
 	coordAndDirCosts:=map[CoordAndDir]int{}
 	paths:=[][]CoordAndDir{{{start.x,start.y,startDir}}}
@@ -49,6 +48,7 @@ func part1(mapData[][]uint8,start Coord,end Coord,debug uint8){
 		moveLeft:  {-1, 0},
 	}
 	endCost:=1000*len(mapData)*len(mapData[0]);
+	finishedPaths:=[][]CoordAndDir{}
 
 	for len(paths)>0{
 		path:=paths[0]
@@ -78,13 +78,13 @@ func part1(mapData[][]uint8,start Coord,end Coord,debug uint8){
 			pathCost:=calcPathCost(nextPath)
 
 			// continue if a finished path is cheaper
-			if endCost<=pathCost {
+			if endCost<pathCost {
 				continue
 			}
 
 			// continue if coord cost not cheaper
 			coordAndDirCost,ok:=coordAndDirCosts[nextCoordAndDir]
-			if ok && coordAndDirCost<=pathCost {
+			if ok && coordAndDirCost<pathCost {
 				continue
 			}
 			// otherwise update
@@ -93,6 +93,7 @@ func part1(mapData[][]uint8,start Coord,end Coord,debug uint8){
 			if nextCoordAndDir.x==end.x && nextCoordAndDir.y==end.y {
 				// update endCost if finished
 				endCost=pathCost
+				finishedPaths = append(finishedPaths, nextPath)
 			} else {
 				// otherwise push back to paths
 				paths = append(paths, nextPath)
@@ -101,6 +102,17 @@ func part1(mapData[][]uint8,start Coord,end Coord,debug uint8){
 		}
 	}
 	fmt.Println("part 1:",endCost)
+	bestPathTiles:=map[Coord]bool{}
+	// finishedPaths will contain some paths which finished in fewer moved but were more expensive
+	for _,path:=range finishedPaths{
+		if calcPathCost(path)==endCost {
+			for _,c:=range path{
+				// coaerce coordanddir to a coord
+				bestPathTiles[Coord{c.x,c.y}]=true
+			}
+		}
+	}
+	fmt.Println("part 2:",len(bestPathTiles))
 }
 
 func calcPathCost(path[]CoordAndDir)(int){
