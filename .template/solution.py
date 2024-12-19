@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+from functools import cache
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = False
