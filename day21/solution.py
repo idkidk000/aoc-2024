@@ -2,6 +2,7 @@
 import sys
 from functools import cache
 from collections import deque
+from itertools import product
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -67,6 +68,7 @@ def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]
       coord_to[1] - coord_from[1],
     )
     max_moves = abs(coord_delta[0]) + abs(coord_delta[1]) + 1
+    # from coordinate and direction button
     paths = deque([([(
       *coord_from,
       '',
@@ -93,32 +95,17 @@ def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]
         else:
           paths.appendleft(path_next)
   if DEBUG > 1: print(f'{key_paths_cache=}')
-  for k, v in key_paths_cache.items():
-    assert len(v), f'key_paths_cache {k=} {v=}'
   return key_paths_cache[(btn_from, btn_to)]
 
 
 def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
   if DEBUG > 0: print(f'get_inputs {output=} {keypad=}')
-  assert isinstance(output, str), f'{output=} is not a str'
   prefixed_output = f'A{output}'
-  inputs: list[str] = []
-  for btn_from, btn_to in zip(prefixed_output[:-1], prefixed_output[1:]):
-    #build a set of all combinations from the cache
-    btn_paths = get_key_paths(btn_from, btn_to, keypad)
-    if len(inputs):
-      next_inputs: list[str] = []
-      for prev_input in inputs:
-        for btn_path in btn_paths:
-          next_inputs.append(f'{prev_input}{btn_path}')
-      inputs = next_inputs
-    else:
-      inputs = btn_paths
-  for x in inputs:
-    assert isinstance(x, str), f'{x=} is not a str'
-  if DEBUG > 0:
-    for x in inputs:
-      print(f'get_inputs input={x}')
+  inputs=[''.join(x) for x in product(*[
+    get_key_paths(btn_from, btn_to, keypad)
+    for btn_from, btn_to in zip(prefixed_output[:-1], prefixed_output[1:])
+  ])]
+  if DEBUG>0: print(f'{len(inputs)=}')
   return inputs
 
 
@@ -146,6 +133,8 @@ def part1():
     complexity_total += complexity
 
     print(f'{shortest_robot_2_inputs=} {door_code_int=} {complexity=}')
+
+    # exit()
 
   print(f'part 1: {complexity_total}')
 
