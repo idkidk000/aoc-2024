@@ -52,9 +52,10 @@ robot_keypad = {
 
 key_paths_cache: dict[tuple[str, str], list[str]] = {}
 
+
 def cache_key_paths():
   # the keypads only have one identical button so it's fine to share a cache
-  for keypad in [door_keypad,robot_keypad]:
+  for keypad in [door_keypad, robot_keypad]:
     rev_keypad = {v: k for k, v in keypad.items()}
     for btn_from in keypad.keys():
       for btn_to in keypad.keys():
@@ -97,52 +98,52 @@ def cache_key_paths():
                 paths.appendleft(path_next)
   if DEBUG > 2: print(f'{key_paths_cache=}')
 
+
 @cache
-def get_key_path_length(btn_from:str,btn_to:str,depth:int):
-  if depth==1:
-    return min(map(len,key_paths_cache[(btn_from,btn_to)]))
-  shortest=None
-  for path in key_paths_cache[(btn_from,btn_to)]:
-    path_length=0
-    for btn_from,btn_to in zip('A'+path,path):
-      path_length+=get_key_path_length(btn_from,btn_to,depth-1)
-    if shortest is None: shortest=path_length
-    else: shortest=min(shortest,path_length)
+def get_key_path_length(btn_from: str, btn_to: str, depth: int):
+  if depth == 1:
+    return min(map(len, key_paths_cache[(btn_from, btn_to)]))
+  shortest = None
+  for path in key_paths_cache[(btn_from, btn_to)]:
+    path_length = 0
+    for btn_from, btn_to in zip('A' + path, path):
+      path_length += get_key_path_length(btn_from, btn_to, depth - 1)
+    if shortest is None: shortest = path_length
+    else: shortest = min(shortest, path_length)
   return shortest
 
-def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
-  if DEBUG > 1: print(f'get_inputs {output=} {keypad=}')
+
+def get_initial_inputs(output: str, keypad: dict[str, tuple[int, int]]):
+  if DEBUG > 1: print(f'get_initial_inputs {output=} {keypad=}')
   prefixed_output = f'A{output}'
-  inputs=[''.join(x) for x in product(*[
-    key_paths_cache[(btn_from, btn_to)]
-    for btn_from, btn_to in zip(prefixed_output[:-1], prefixed_output[1:])
-  ])]
-  if DEBUG>0: print(f'{len(inputs)=}')
+  inputs = [
+    ''.join(x) for x in product(
+      *[key_paths_cache[(btn_from, btn_to)] for btn_from, btn_to in zip(prefixed_output[:-1], prefixed_output[1:])]
+    )
+  ]
+  if DEBUG > 0: print(f'{len(inputs)=}')
   return inputs
 
 
-def get_total_complexity(depth:int):
+def get_total_complexity(depth: int):
   complexity_total = 0
   for door_code in door_codes:
-    inputs = get_inputs(door_code, door_keypad)
-    shortest_path=None
-    for path in inputs:
-      path_length=0
-      for btn_from,btn_to in zip('A'+path,path):
-        path_length+=get_key_path_length(btn_from,btn_to,depth)
-      if shortest_path is None: shortest_path=path_length
-      else: shortest_path=min(shortest_path,path_length)
-
+    shortest_path = min(
+      [
+        sum([get_key_path_length(btn_from, btn_to, depth)
+             for btn_from, btn_to in zip('A' + path, path)])
+        for path in get_initial_inputs(door_code, door_keypad)
+      ]
+    )
     door_code_int = int(''.join(x for x in door_code if x.isdigit()))
     complexity = shortest_path * door_code_int
     complexity_total += complexity
 
-    if DEBUG>0: print(f'{depth=} {shortest_path=} {door_code_int=} {complexity=}')
+    if DEBUG > 0: print(f'{depth=} {shortest_path=} {door_code_int=} {complexity=}')
 
   return complexity_total
+
 
 cache_key_paths()
 print(f'part 1: {get_total_complexity(2)}')
 print(f'part 2: {get_total_complexity(25)}')
-
-
