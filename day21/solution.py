@@ -52,7 +52,6 @@ robot_keypad = {
 
 key_paths_cache: dict[tuple[str, str], list[str]] = {}
 
-
 def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]):
   cached = key_paths_cache.get((btn_from, btn_to))
   if cached is not None: return cached
@@ -97,6 +96,20 @@ def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]
   if DEBUG > 2: print(f'{key_paths_cache=}')
   return key_paths_cache[(btn_from, btn_to)]
 
+@cache
+def get_key_path_length(btn_from:str,btn_to:str,depth:int):
+  if depth==0:
+    return min(map(len,key_paths_cache[(btn_from,btn_to)]))
+  shortest=None
+  for path in key_paths_cache[(btn_from,btn_to)]:
+    path_length=0
+    for btn_from,btn_to in zip('A'+path,path):
+      path_length+=get_key_path_length(btn_from,btn_to,depth-1)
+    if shortest is None: shortest=path_length
+    else: shortest=min(shortest,path_length)
+  return shortest
+
+
 
 def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
   if DEBUG > 1: print(f'get_inputs {output=} {keypad=}')
@@ -108,38 +121,7 @@ def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
   if DEBUG>0: print(f'{len(inputs)=}')
   return inputs
 
-
 def part1():
-  complexity_total = 0
-  for door_code in door_codes:
-    print(f'{door_code=}')
-
-    robot_1_inputs = get_inputs(door_code, door_keypad)
-    # print(f'{robot_1_inputs=}')
-
-    robot_2_inputs: list[str] = []
-    for x in robot_1_inputs:
-      robot_2_inputs.extend(get_inputs(x, robot_keypad))
-    robot_2_shortest=min(map(len,robot_2_inputs))
-    # print(f'{robot_2_inputs=}')
-
-    robot_3_inputs: list[str] = []
-    for x in [x for x in robot_2_inputs if len(x)==robot_2_shortest]:
-      robot_3_inputs.extend(get_inputs(x, robot_keypad))
-    robot_3_shortest=min(map(len,robot_3_inputs))
-    # print(f'{robot_3_inputs=}')
-
-    door_code_int = int(''.join(x for x in door_code if x.isdigit()))
-    complexity = robot_3_shortest * door_code_int
-    complexity_total += complexity
-
-    print(f'{robot_3_shortest=} {door_code_int=} {complexity=}')
-
-    # exit()
-
-  print(f'part 1: {complexity_total}')
-
-def part2():
   complexity_total = 0
   for door_code in door_codes:
     print(f'{door_code=}')
@@ -147,7 +129,7 @@ def part2():
     inputs = get_inputs(door_code, door_keypad)
     # print(f'{robot_1_inputs=}')
 
-    for i in range(25):
+    for i in range(2):
       print(f'{door_code=} {i=}')
       inputs_shortest=min(map(len,inputs))
       next_inputs=[
@@ -167,9 +149,36 @@ def part2():
 
     # exit()
 
-  print(f'part 2: {complexity_total}')
+  print(f'part 1: {complexity_total}')
 
-# part1()
+def part2():
+  #FIXME: get_key_path_length() is dependant upon the cache made in part 1
+  complexity_total = 0
+  for door_code in door_codes:
+    print(f'{door_code=}')
+
+    inputs = get_inputs(door_code, door_keypad)
+    # print(f'{robot_1_inputs=}')
+    shortest_path=None
+    for path in inputs:
+      path_length=0
+      for btn_from,btn_to in zip('A'+path,path):
+        path_length+=get_key_path_length(btn_from,btn_to,24)
+      if shortest_path is None: shortest_path=path_length
+      else: shortest_path=min(shortest_path,path_length)
+
+    door_code_int = int(''.join(x for x in door_code if x.isdigit()))
+    complexity = shortest_path * door_code_int
+    complexity_total += complexity
+
+    print(f'{shortest_path=} {door_code_int=} {complexity=}')
+
+    # exit()
+
+  print(f'part 2: {complexity_total}')
+  #165644591859332
+
+part1()
 part2()
 
 
