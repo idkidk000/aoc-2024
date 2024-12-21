@@ -96,5 +96,51 @@ def part1():
   print(f'part 1: {shortcut_count=}')
 
 
+def part2():
+  distances = get_distances()
+  shortcuts: set[tuple[int, int, int, int]] = set()
+  savings: dict[int, int] = {}
+
+  for r in range(rows):
+    for c in range(cols):
+      origin_distance = distances[r][c]
+      if origin_distance == -1: continue
+      for i in range(2, 21):
+        for osr in range(i + 1):
+          osc = i - osr
+          for d in [
+            (-1, 1),
+            (1, 1),
+            (1, -1),
+            (-1, -1),
+          ]:
+            nr, nc = r + osr * d[0], c + osc * d[1]
+            if not (0 <= nr < rows and 0 <= nc < cols): continue
+            distance = distances[nr][nc]
+            if distance == -1: continue
+            saving = distance - origin_distance - i
+            if saving < 0: continue
+            if saving < 100: continue
+            key = (r, c, nr, nc)
+            if key not in shortcuts:
+              savings[saving] = savings.get(saving, 0) + 1
+              shortcuts.add(key)
+
+  if DEBUG > 1: print(f'{shortcuts=}')
+  if DEBUG > 0:
+    shortcut_r_max = max([abs(x[0] - x[2]) for x in shortcuts])
+    shortcut_c_max = max([abs(x[1] - x[3]) for x in shortcuts])
+    shortcut_m_max = max([abs(x[0] - x[2]) + abs(x[1] - x[3]) for x in shortcuts])
+    print(f'{shortcut_r_max=} {shortcut_c_max=} {shortcut_m_max=}')
+    for k in sorted(savings.keys()):
+      print(f'savings: {k=} {savings[k]}')
+
+  shortcut_count = len(shortcuts)
+  print(f'part 2: {shortcut_count=}')
+  #282402 too low
+  #1735306 too high
+
+
 # draw_map(map_data)
 part1()
+part2()
