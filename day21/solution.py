@@ -99,18 +99,25 @@ def cache_key_paths():
   if DEBUG > 2: print(f'{key_paths_cache=}')
 
 
-@cache
+# @cache
+key_path_length_cache: dict[tuple[str, str, int], int] = {}
+
+
 def get_key_path_length(btn_from: str, btn_to: str, depth: int):
-  if depth == 1:
-    return min(map(len, key_paths_cache[(btn_from, btn_to)]))
-  shortest = None
-  for path in key_paths_cache[(btn_from, btn_to)]:
-    path_length = 0
-    for btn_from, btn_to in zip('A' + path, path):
-      path_length += get_key_path_length(btn_from, btn_to, depth - 1)
-    if shortest is None: shortest = path_length
-    else: shortest = min(shortest, path_length)
-  return shortest
+  cache_key = (btn_from, btn_to, depth)
+  if cache_key not in key_path_length_cache:
+    if depth == 1:
+      key_path_length_cache[cache_key] = min(map(len, key_paths_cache[(btn_from, btn_to)]))
+    else:
+      shortest = min(
+        [
+          sum([get_key_path_length(btn_from, btn_to, depth - 1)
+               for btn_from, btn_to in zip('A' + path, path)])
+          for path in key_paths_cache[(btn_from, btn_to)]
+        ]
+      )
+      key_path_length_cache[cache_key] = shortest
+  return key_path_length_cache[cache_key]
 
 
 def get_initial_inputs(output: str, keypad: dict[str, tuple[int, int]]):
