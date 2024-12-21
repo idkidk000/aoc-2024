@@ -94,12 +94,12 @@ def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]
           key_paths_cache[(btn_from, btn_to)].append(f'''{''.join(x[2] for x in path_next[1:])}A''')
         else:
           paths.appendleft(path_next)
-  if DEBUG > 1: print(f'{key_paths_cache=}')
+  if DEBUG > 2: print(f'{key_paths_cache=}')
   return key_paths_cache[(btn_from, btn_to)]
 
 
 def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
-  if DEBUG > 0: print(f'get_inputs {output=} {keypad=}')
+  if DEBUG > 1: print(f'get_inputs {output=} {keypad=}')
   prefixed_output = f'A{output}'
   inputs=[''.join(x) for x in product(*[
     get_key_paths(btn_from, btn_to, keypad)
@@ -114,28 +114,62 @@ def part1():
   for door_code in door_codes:
     print(f'{door_code=}')
 
-    door_inputs = get_inputs(door_code, door_keypad)
-    # print(f'{door_inputs=}')
-
-    robot_1_inputs: list[str] = []
-    for x in door_inputs:
-      robot_1_inputs.extend(get_inputs(x, robot_keypad))
+    robot_1_inputs = get_inputs(door_code, door_keypad)
     # print(f'{robot_1_inputs=}')
 
     robot_2_inputs: list[str] = []
     for x in robot_1_inputs:
       robot_2_inputs.extend(get_inputs(x, robot_keypad))
+    robot_2_shortest=min(map(len,robot_2_inputs))
     # print(f'{robot_2_inputs=}')
 
-    shortest_robot_2_inputs = min(map(len, robot_2_inputs))
+    robot_3_inputs: list[str] = []
+    for x in [x for x in robot_2_inputs if len(x)==robot_2_shortest]:
+      robot_3_inputs.extend(get_inputs(x, robot_keypad))
+    robot_3_shortest=min(map(len,robot_3_inputs))
+    # print(f'{robot_3_inputs=}')
+
     door_code_int = int(''.join(x for x in door_code if x.isdigit()))
-    complexity = shortest_robot_2_inputs * door_code_int
+    complexity = robot_3_shortest * door_code_int
     complexity_total += complexity
 
-    print(f'{shortest_robot_2_inputs=} {door_code_int=} {complexity=}')
+    print(f'{robot_3_shortest=} {door_code_int=} {complexity=}')
 
     # exit()
 
   print(f'part 1: {complexity_total}')
 
-part1()
+def part2():
+  complexity_total = 0
+  for door_code in door_codes:
+    print(f'{door_code=}')
+
+    inputs = get_inputs(door_code, door_keypad)
+    # print(f'{robot_1_inputs=}')
+
+    for i in range(25):
+      print(f'{door_code=} {i=}')
+      inputs_shortest=min(map(len,inputs))
+      next_inputs=[
+        z
+        for y in [x for x in inputs if len(x)==inputs_shortest]
+        for z in get_inputs(y, robot_keypad)
+
+      ]
+      inputs=next_inputs
+
+    inputs_shortest=min(map(len,inputs))
+    door_code_int = int(''.join(x for x in door_code if x.isdigit()))
+    complexity = inputs_shortest * door_code_int
+    complexity_total += complexity
+
+    print(f'{inputs_shortest=} {door_code_int=} {complexity=}')
+
+    # exit()
+
+  print(f'part 2: {complexity_total}')
+
+# part1()
+part2()
+
+
