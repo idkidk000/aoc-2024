@@ -52,53 +52,54 @@ robot_keypad = {
 
 key_paths_cache: dict[tuple[str, str], list[str]] = {}
 
-def get_key_paths(btn_from: str, btn_to: str, keypad: dict[str, tuple[int, int]]):
-  cached = key_paths_cache.get((btn_from, btn_to))
-  if cached is not None: return cached
-  rev_keypad = {v: k for k, v in keypad.items()}
-  if btn_from == btn_to:
-    key_paths_cache[(btn_from, btn_to)] = ['A']
-  else:
-    key_paths_cache[(btn_from, btn_to)] = []
-    coord_from = keypad[btn_from]
-    coord_to = keypad[btn_to]
-    coord_delta = (
-      coord_to[0] - coord_from[0],
-      coord_to[1] - coord_from[1],
-    )
-    max_moves = abs(coord_delta[0]) + abs(coord_delta[1]) + 1
-    # from coordinate and direction button
-    paths = deque([([(
-      *coord_from,
-      '',
-    )])])
-    while len(paths):
-      path = paths.pop()
-      coord_curr = path[-1]
-      for d in D4:
-        coord_next = (
-          coord_curr[0] + d[0],
-          coord_curr[1] + d[1],
-          d[2],
-        )
-        if coord_next in path: continue
-        char_at = rev_keypad.get((coord_next[0], coord_next[1]))
-        if char_at is None: continue
-        path_next = [
-          *path,
-          coord_next,
-        ]
-        if len(path_next) > max_moves: continue
-        if char_at == btn_to:
-          key_paths_cache[(btn_from, btn_to)].append(f'''{''.join(x[2] for x in path_next[1:])}A''')
+def cache_key_paths():
+  # the keypads only have one identical button so it's fine to share a cache
+  for keypad in [door_keypad,robot_keypad]:
+    rev_keypad = {v: k for k, v in keypad.items()}
+    for btn_from in keypad.keys():
+      for btn_to in keypad.keys():
+        if btn_from == btn_to:
+          key_paths_cache[(btn_from, btn_to)] = ['A']
         else:
-          paths.appendleft(path_next)
+          key_paths_cache[(btn_from, btn_to)] = []
+          coord_from = keypad[btn_from]
+          coord_to = keypad[btn_to]
+          coord_delta = (
+            coord_to[0] - coord_from[0],
+            coord_to[1] - coord_from[1],
+          )
+          max_moves = abs(coord_delta[0]) + abs(coord_delta[1]) + 1
+          # from coordinate and direction button
+          paths = deque([([(
+            *coord_from,
+            '',
+          )])])
+          while len(paths):
+            path = paths.pop()
+            coord_curr = path[-1]
+            for d in D4:
+              coord_next = (
+                coord_curr[0] + d[0],
+                coord_curr[1] + d[1],
+                d[2],
+              )
+              if coord_next in path: continue
+              char_at = rev_keypad.get((coord_next[0], coord_next[1]))
+              if char_at is None: continue
+              path_next = [
+                *path,
+                coord_next,
+              ]
+              if len(path_next) > max_moves: continue
+              if char_at == btn_to:
+                key_paths_cache[(btn_from, btn_to)].append(f'''{''.join(x[2] for x in path_next[1:])}A''')
+              else:
+                paths.appendleft(path_next)
   if DEBUG > 2: print(f'{key_paths_cache=}')
-  return key_paths_cache[(btn_from, btn_to)]
 
 @cache
 def get_key_path_length(btn_from:str,btn_to:str,depth:int):
-  if depth==0:
+  if depth==1:
     return min(map(len,key_paths_cache[(btn_from,btn_to)]))
   shortest=None
   for path in key_paths_cache[(btn_from,btn_to)]:
@@ -109,61 +110,26 @@ def get_key_path_length(btn_from:str,btn_to:str,depth:int):
     else: shortest=min(shortest,path_length)
   return shortest
 
-
-
 def get_inputs(output: str, keypad: dict[str, tuple[int, int]]):
   if DEBUG > 1: print(f'get_inputs {output=} {keypad=}')
   prefixed_output = f'A{output}'
   inputs=[''.join(x) for x in product(*[
-    get_key_paths(btn_from, btn_to, keypad)
+    key_paths_cache[(btn_from, btn_to)]
     for btn_from, btn_to in zip(prefixed_output[:-1], prefixed_output[1:])
   ])]
   if DEBUG>0: print(f'{len(inputs)=}')
   return inputs
 
-def part1():
+
+def get_total_complexity(depth:int):
   complexity_total = 0
   for door_code in door_codes:
-    print(f'{door_code=}')
-
     inputs = get_inputs(door_code, door_keypad)
-    # print(f'{robot_1_inputs=}')
-
-    for i in range(2):
-      print(f'{door_code=} {i=}')
-      inputs_shortest=min(map(len,inputs))
-      next_inputs=[
-        z
-        for y in [x for x in inputs if len(x)==inputs_shortest]
-        for z in get_inputs(y, robot_keypad)
-
-      ]
-      inputs=next_inputs
-
-    inputs_shortest=min(map(len,inputs))
-    door_code_int = int(''.join(x for x in door_code if x.isdigit()))
-    complexity = inputs_shortest * door_code_int
-    complexity_total += complexity
-
-    print(f'{inputs_shortest=} {door_code_int=} {complexity=}')
-
-    # exit()
-
-  print(f'part 1: {complexity_total}')
-
-def part2():
-  #FIXME: get_key_path_length() is dependant upon the cache made in part 1
-  complexity_total = 0
-  for door_code in door_codes:
-    print(f'{door_code=}')
-
-    inputs = get_inputs(door_code, door_keypad)
-    # print(f'{robot_1_inputs=}')
     shortest_path=None
     for path in inputs:
       path_length=0
       for btn_from,btn_to in zip('A'+path,path):
-        path_length+=get_key_path_length(btn_from,btn_to,24)
+        path_length+=get_key_path_length(btn_from,btn_to,depth)
       if shortest_path is None: shortest_path=path_length
       else: shortest_path=min(shortest_path,path_length)
 
@@ -171,14 +137,12 @@ def part2():
     complexity = shortest_path * door_code_int
     complexity_total += complexity
 
-    print(f'{shortest_path=} {door_code_int=} {complexity=}')
+    if DEBUG>0: print(f'{depth=} {shortest_path=} {door_code_int=} {complexity=}')
 
-    # exit()
+  return complexity_total
 
-  print(f'part 2: {complexity_total}')
-  #165644591859332
-
-part1()
-part2()
+cache_key_paths()
+print(f'part 1: {get_total_complexity(2)}')
+print(f'part 2: {get_total_complexity(25)}')
 
 
