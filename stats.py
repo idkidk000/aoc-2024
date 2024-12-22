@@ -10,7 +10,7 @@ files = sorted(os.walk('.'))
 all_exts = sorted({
   z \
   for x in files if re.match(DIR_REGEX, x[0]) \
-  for y in x[2] if '.' in y and (z:=y.split('.')[1]) and z not in IGNORE_EXTS
+  for y in x[2] if not y.startswith('.') and '.' in y and (z:=y.split('.')[1]) and z not in IGNORE_EXTS
 })
 for dir_path, dir_names, file_names in files:
   if len(file_names) == 0 or not re.match(DIR_REGEX, dir_path): continue

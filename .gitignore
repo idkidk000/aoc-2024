@@ -19,3 +19,4 @@ src/
 day01/solution.rs
 day15/maps/
 */.old/
+*/.*
