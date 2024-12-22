@@ -46,26 +46,33 @@ def part1():
 
 
 def part2():
-  print('calc input_deltas')
-  input_deltas = []
-  for value_prev in inputs:
-    deltas = []
+  print('calc input_prices')
+  input_prices = []
+  for value in inputs:
+    prices = []
     for i in range(2000):
-      value = value_prev
       value ^= value << 6  # xor mult 64
       value &= 16777215  # mod 16777216
       value ^= value >> 5  # xor idiv 32
       value &= 16777215  # mod 16777216
       value ^= value << 11  # xor mult 2048
       value &= 16777215  # mod 16777216
-      delta = (value % 10) - (value_prev % 10)
-      deltas.append(delta)
-    input_deltas.append(deltas)
-  for x in input_deltas:
-    for y in x:
-      assert -9 <= y <= 9, f'delta {y=} invalid'
+      prices.append(value % 10)
+    input_prices.append(prices)
+  print(f'{input_prices[0]=}')
+
+  print('calc input_deltas')
+  input_deltas = [ \
+    [ \
+      price_next - price_prev \
+      for price_prev, price_next in zip(prices, prices[1:]) \
+    ] \
+    for prices in input_prices \
+  ]
+  print(f'{input_deltas[0]=}')
 
   print('calc sequences')
+  # sequences = [[-2, 1, -1, 3]]
   sequences = [
     x for x in product(
       range(-9, 10),
@@ -78,15 +85,24 @@ def part2():
 
   print('calc sequence_totals')
   sequence_totals = []
-  for j, sequence in enumerate(sequences):
-    if j % 50 == 0: print(f'[{j}/{len(sequences)}] {sequence}')
+  for i, sequence in enumerate(sequences):
     sequence_total = 0
-    for deltas in input_deltas:
-      for i in range(1996):
-        if deltas[i] == sequence[0] and deltas[i + 1] == sequence[1] and deltas[i + 2] == sequence[2] and deltas[
-          i + 3] == sequence[3]:
-          sequence_total += deltas[i + 4]
+    for j, deltas in enumerate(input_deltas):
+      for d0, d1, d2, d3, p in zip(
+        deltas,
+        deltas[1:],
+        deltas[2:],
+        deltas[3:],
+        input_prices[j][4:],  #TODO: 4??
+      ):
+        if d0==sequence[0] and \
+          d1==sequence[1] and \
+          d2==sequence[2] and \
+          d3==sequence[3]:
+          # print(f'{d0=} {d1=} {d2=} {d3=} {p=} {j=}')
+          sequence_total += p
           break
+    if i % 50 == 0: print(f'[{i}/{len(sequences)}] {sequence=} {sequence_total=}')
     sequence_totals.append((sequence, sequence_total))
 
   print('sort sequence_totals')
