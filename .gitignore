@@ -11,12 +11,16 @@
 # rust permenant
 target/
 
-
 # rust temporary while i get it working properly in my ide
 src/
 /Cargo.lock
 /Cargo.toml
-day01/solution.rs
+
+# tests
 day15/maps/
+
+# junk
 */.old/
+
+# incomplete
 */.*
