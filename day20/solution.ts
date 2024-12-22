@@ -75,7 +75,7 @@ if (DEBUG) printMap(mapData);
 const { rows, cols, startAt, endAt } = getMapParams(mapData);
 if (DEBUG) console.debug({ rows, cols, startAt, endAt });
 const mapTimes = getMapTimes(mapData);
-if (DEBUG) printMap(mapTimes);
+// if (DEBUG) printMap(mapTimes);
 
 const part1 = () => {
   let count = 0;
@@ -110,4 +110,47 @@ const part1 = () => {
   console.log('part 1:', count);
 };
 
+const part2 = () => {
+  //precomupte the offsets
+  const maxMoves = 20;
+  const offsets = [];
+  for (let r = 0 - maxMoves; r <= maxMoves; r++) {
+    for (let c = 0 - maxMoves; c <= maxMoves; c++) {
+      const moves = Math.abs(r) + Math.abs(c);
+      if (moves > maxMoves || moves < 2) continue;
+      offsets.push([r, c, moves]);
+    }
+  }
+  if (DEBUG > 1) console.debug({ offsets });
+
+  const shortcutTimes = new Map();
+  let countAll = 0;
+  let count100 = 0;
+  // loop over all rows and cols
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (mapTimes[r][c] == -1) continue;
+      const origTime = mapTimes[r][c];
+      for (const [or, oc, moves] of offsets) {
+        const [nr, nc] = [r + or, c + oc];
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        const time = mapTimes[nr][nc];
+        if (time == -1) continue;
+        const saving = time - origTime - moves;
+        if (saving < 0) continue;
+        countAll++;
+        if (saving >= 100) count100++;
+        shortcutTimes.set(saving, (shortcutTimes.get(saving) ?? 0) + 1);
+      }
+    }
+  }
+  if (DEBUG) {
+    const sortedShortcutTimes = [...shortcutTimes].sort((a, b) => a[0] - b[0]);
+    console.debug({ sortedShortcutTimes });
+  }
+  // .sort((a, b) => Number(a[0]) - Number(b[0]));
+  console.log('part 2:', { count100, countAll });
+};
+
 part1();
+part2();
