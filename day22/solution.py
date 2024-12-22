@@ -2,6 +2,7 @@
 import sys
 # from functools import cache
 from itertools import product
+import time
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -50,7 +51,7 @@ def part2():
   input_prices = []
   for value in inputs:
     prices = []
-    for i in range(2000):
+    for sequence_ix in range(2000):
       value ^= value << 6  # xor mult 64
       value &= 16777215  # mod 16777216
       value ^= value >> 5  # xor idiv 32
@@ -79,35 +80,50 @@ def part2():
       range(-9, 10),
       range(-9, 10),
       range(-9, 10),
-    ) if -9 <= x[0] + x[1] <= 9 and -9 <= x[0] + x[1] + x[2] <= 9 and -9 <= sum(x) <= 9
+    ) if -9 <= sum(x[:2]) <= 9 and -9 <= sum(x[:3]) <= 9 and -9 <= sum(x) <= 9
   ]
   print(f'{len(sequences)=}')
 
   print('calc sequence_totals')
-  sequence_totals = []
-  for i, sequence in enumerate(sequences):
+  best_total = 0
+  best_sequence = None
+  last_status = 0.0
+  for sequence_ix, sequence in enumerate(sequences):
     sequence_total = 0
-    for j, deltas in enumerate(input_deltas):
-      for d0, d1, d2, d3, p in zip(
-        deltas,
-        deltas[1:],
-        deltas[2:],
-        deltas[3:],
-        input_prices[j][4:],  #TODO: 4??
-      ):
-        if d0==sequence[0] and \
-          d1==sequence[1] and \
-          d2==sequence[2] and \
-          d3==sequence[3]:
-          # print(f'{d0=} {d1=} {d2=} {d3=} {p=} {j=}')
-          sequence_total += p
-          break
-    if i % 50 == 0: print(f'[{i}/{len(sequences)}] {sequence=} {sequence_total=}')
-    sequence_totals.append((sequence, sequence_total))
+    for input_delta_ix, deltas in enumerate(input_deltas):
+      delta_ix = -1
+      try:
+        while delta_ix := deltas.index(sequence[0], delta_ix + 1):
+          if deltas[delta_ix+1]==sequence[1] and \
+            deltas[delta_ix+2]==sequence[2] and \
+            deltas[delta_ix+3]==sequence[3]:
+            sequence_total += input_prices[input_delta_ix][delta_ix + 4]
+            break
+      except:
+        pass
+      # for d0, d1, d2, d3, p in zip(
+      #   deltas,
+      #   deltas[1:],
+      #   deltas[2:],
+      #   deltas[3:],
+      #   input_prices[input_delta_ix][4:],
+      # ):
+      #   if d0==sequence[0] and \
+      #     d1==sequence[1] and \
+      #     d2==sequence[2] and \
+      #     d3==sequence[3]:
+      #     # print(f'{d0=} {d1=} {d2=} {d3=} {p=} {j=}')
+      #     sequence_total += p
+      #     break
+    if time.monotonic() >= last_status + 10:
+      last_status = time.monotonic()
+      print(f'{last_status%3600:04.0f} [{sequence_ix}/{len(sequences)}] {sequence=} {best_sequence=} {best_total=}')
+    if sequence_total > best_total:
+      best_total = sequence_total
+      best_sequence = sequence
+      print(f'{best_sequence=} {best_total=}')
 
-  print('sort sequence_totals')
-  best_sequence = sorted(sequence_totals, key=lambda x: x[1], reverse=True)[0]
-  print(f'part 2: {best_sequence=}')
+  print(f'part 2: {best_sequence=} {best_total=}')
 
 
 # part1()
