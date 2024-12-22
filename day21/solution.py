@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from functools import cache
+#from functools import cache
 from collections import deque
 from itertools import product
 
@@ -109,14 +109,13 @@ def get_key_path_length(btn_from: str, btn_to: str, depth: int):
     if depth == 1:
       key_path_length_cache[cache_key] = min(map(len, key_paths_cache[(btn_from, btn_to)]))
     else:
-      shortest = min(
-        [
-          sum([get_key_path_length(btn_from, btn_to, depth - 1)
-               for btn_from, btn_to in zip('A' + path, path)])
-          for path in key_paths_cache[(btn_from, btn_to)]
-        ]
+      key_path_length_cache[cache_key] = min( \
+        sum( \
+          get_key_path_length(btn_from, btn_to, depth - 1) \
+          for btn_from, btn_to in zip('A' + path, path) \
+        ) \
+        for path in key_paths_cache[(btn_from, btn_to)] \
       )
-      key_path_length_cache[cache_key] = shortest
   return key_path_length_cache[cache_key]
 
 
