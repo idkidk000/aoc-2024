@@ -8,6 +8,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -54,24 +56,41 @@ func main() {
 }
 
 func part1(codes []string, numericMoves map[string][]string,directionalMoves map[string][]string,debug uint8){
+	totalComplexity:=0
 	for _,code:=range codes{
-		result:=transcribe(code,numericMoves,debug)
-		fmt.Println("code",code,"sequences",result)
-		// need to write a function which accepts an [][] of sequences and a keymap , wraps transcribe(), and returns the shortest sequences
-		// then we can call it 4 times in itself to get the result for part 1
-		// part 2 needs much more big braining
-		for _,sequence:=range result {
-			for _,subsequence:=range sequence {
-				result2:=transcribe(subsequence,directionalMoves,debug)
-				fmt.Println("subsequence",subsequence,"sequences",result2)
+		sequences:=transcribe(code,numericMoves,debug)
+		// fmt.Println("code",code,"sequences",sequences)
+		for depth:=0;depth<2;depth++{
+			nextSequences:=[]string{}
+			for _,sequence:=range sequences{
+				for _,nextSequence:=range transcribe(sequence,directionalMoves,debug){
+					nextSequences = append(nextSequences, nextSequence)
+				}
+			}
+			sort.Slice(nextSequences, func(i, j int) bool {
+				return len(nextSequences[i])<len(nextSequences[j])
+			})
+			shortest:=len(nextSequences[0])
+			sequences=[]string{}
+			for _,sequence:=range nextSequences{
+				if len(sequence)==shortest{
+					sequences = append(sequences, sequence)
+				}
 			}
 		}
+		// fmt.Println("code",code,"sequences",sequences)
+		intCode,_:=strconv.Atoi(code[0:len(code)-1]);
+		sequenceLen:=len(sequences[0])
+		complexity:=sequenceLen*intCode
+		totalComplexity+=complexity
+		fmt.Println("code",code,"intCode",intCode,"sequenceLen",sequenceLen,"complexity",complexity)
 	}
+	fmt.Println("part 1:",totalComplexity)
 }
 
-func transcribe(code string,moves map[string][]string, debug uint8)(sequences [][]string){
+func transcribe(code string,moves map[string][]string, debug uint8)([]string){
 	// accepts either the numeric or direction keypad moves and transcribes to another layer of directional moves
-	sequences=make([][]string,0,len(code))
+	sequences:=make([][]string,0,len(code))
 	prefixedCode:=fmt.Sprintf("A%s",code)
 	for i:=1;i<len(prefixedCode);i++{
 		index:=prefixedCode[i-1:i+1]
@@ -81,7 +100,37 @@ func transcribe(code string,moves map[string][]string, debug uint8)(sequences []
 			fmt.Println("transcribe code",code,"i",i,"index",index,"seqs",subsequence)
 		}
 	}
-	return
+	//for the naive part 1 approach, this returns a []string of the shortest products of each option
+	if debug>1 {
+		fmt.Println("sequences:",sequences)
+	}
+	products:=make([]string,len(sequences[0]))
+	copy(products,sequences[0])
+	if debug>1 {
+		fmt.Println("products:",products)
+	}
+	for _,group:=range sequences[1:]{
+		if debug>1 {
+			fmt.Println("group:",group)
+		}
+		nextProducts:=[]string{}
+		for _,option:=range group{
+			for _,product:=range products{
+				nextProducts = append(nextProducts, fmt.Sprintf("%s%s",product,option))
+			}
+		}
+		sort.Slice(nextProducts, func(i, j int) bool {
+			return len(nextProducts[i])<len(nextProducts[j])
+		})
+		shortest:=len(nextProducts[0])
+		products=[]string{}
+		for _,nextProduct:=range nextProducts{
+			if len(nextProduct)==shortest {
+				products = append(products, nextProduct)
+			}
+		}
+	}
+	return products
 }
 
 func walkKeypad(keypad [][]string, debug uint8) (moves map[string][]string) {
