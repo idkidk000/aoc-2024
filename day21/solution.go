@@ -53,6 +53,63 @@ func main() {
 		fmt.Println(directionalMoves)
 	}
 	part1(codes, numericMoves, directionalMoves, debug)
+	part2(codes, numericMoves, directionalMoves, debug)
+}
+
+func part2(codes []string, numericMoves map[string][]string, directionalMoves map[string][]string, debug uint8) {
+	totalComplexity := 0
+	lengthCache := map[string]int{}
+	for k, v := range directionalMoves {
+		lengthCache[k] = len(v[0])
+	}
+	for _, code := range codes {
+		sequences := transcribe(code, numericMoves, debug)
+		minLength := -1
+		for _, sequence := range sequences {
+			length := getSequenceLength(sequence, directionalMoves, lengthCache, 25, debug)
+			if minLength == -1 || length < minLength {
+				minLength = length
+			}
+		}
+		intCode, _ := strconv.Atoi(code[0 : len(code)-1])
+		complexity := minLength * intCode
+		totalComplexity += complexity
+		fmt.Println("code", code, "intCode", intCode, "minLength", minLength, "complexity", complexity)
+	}
+	fmt.Println("part 2:", totalComplexity)
+}
+
+func getSequenceLength(sequence string, directionalMoves map[string][]string, lengthCache map[string]int, depth int, debug uint8) int {
+	// return from cache immediately
+	prefixedSequence := "A" + sequence
+	cacheKey := prefixedSequence + " " + strconv.Itoa(depth)
+	if cachedValue, ok := lengthCache[cacheKey]; ok {
+		return cachedValue
+	}
+	totalLength := 0
+	if depth == 1 {
+		// special case
+		for i := 1; i < len(prefixedSequence); i++ {
+			index := prefixedSequence[i-1 : i+1]
+			totalLength += lengthCache[index]
+		}
+	} else {
+		// ugh
+		for i := 1; i < len(prefixedSequence); i++ {
+			index := prefixedSequence[i-1 : i+1]
+			minLength := -1
+			for _, subsequence := range directionalMoves[index] {
+				length := getSequenceLength(subsequence, directionalMoves, lengthCache, depth-1, debug)
+				if minLength == -1 || length < minLength {
+					minLength = length
+				}
+			}
+			totalLength += minLength
+		}
+	}
+	// be sure to cache the result before returning
+	lengthCache[cacheKey] = totalLength
+	return totalLength
 }
 
 func part1(codes []string, numericMoves map[string][]string, directionalMoves map[string][]string, debug uint8) {
@@ -93,7 +150,7 @@ func part1(codes []string, numericMoves map[string][]string, directionalMoves ma
 func transcribe(code string, moves map[string][]string, debug uint8) []string {
 	// accepts either the numeric or direction keypad moves and transcribes to another layer of directional moves
 	sequences := make([][]string, 0, len(code))
-	prefixedCode := fmt.Sprintf("A%s", code)
+	prefixedCode := "A" + code
 	for i := 1; i < len(prefixedCode); i++ {
 		index := prefixedCode[i-1 : i+1]
 		subsequence := moves[index]
