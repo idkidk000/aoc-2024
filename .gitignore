@@ -7,14 +7,8 @@
 # unignore all dirs
 !*/
 
-
 # rust permenant
 target/
-
-# rust temporary while i get it working properly in my ide
-src/
-/Cargo.lock
-/Cargo.toml
 
 # tests
 day15/maps/
