@@ -1,9 +1,5 @@
 package main
 
-/*
-	FIXME: INCOMPLETE
-*/
-
 import (
 	"bufio"
 	"fmt"
