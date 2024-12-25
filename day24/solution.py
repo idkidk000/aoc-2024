@@ -2,7 +2,7 @@
 import sys
 from functools import cache
 from random import randint
-from itertools import product,combinations,zip_longest
+from itertools import product, combinations, zip_longest
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -220,27 +220,32 @@ def part2_2():
       return local_resolved[symbol]
 
     result_bits = [resolve(x) for x in sorted(unresolved.keys()) if x[0] == 'z']
-    for t, r in zip_longest(target_bits, result_bits,fillvalue=0):
+    for t, r in zip_longest(target_bits, result_bits, fillvalue=0):
       if t != r: return False
     return True
 
-  possible_symbols = [x for x in sorted(resolved.keys()) if x[0] in 'xy' and int(x[1:])>=3]
+  possible_symbols = [x for x in sorted(resolved.keys()) if x[0] in 'xy' and int(x[1:]) >= 3]
   print(f'{possible_symbols=}')
 
   x = randint(0, 1 << 45)
   y = randint(0, (1 << 45) - x)
-  possible_swaps=[]
-  count_ok=0
-  count_fail=0
-  for c in combinations(possible_symbols,8):
-    swaps=[(c[0],c[1]),(c[2],c[3]),(c[4],c[5]),(c[6],c[7]),]
-    if test(x,y,swaps):
+  possible_swaps = []
+  count_ok = 0
+  count_fail = 0
+  for c in combinations(possible_symbols, 8):
+    swaps = [
+      (c[0], c[1]),
+      (c[2], c[3]),
+      (c[4], c[5]),
+      (c[6], c[7]),
+    ]
+    if test(x, y, swaps):
       possible_swaps.append(swaps)
       print(f'*** found {swaps} ***')
-      count_ok+=1
+      count_ok += 1
     else:
-      count_fail+=1
-    if (count_ok+count_fail)%10_000==0: print(f'{count_ok=:,.0f} {count_fail=:,.0f} {swaps=}')
+      count_fail += 1
+    if (count_ok + count_fail) % 10_000 == 0: print(f'{count_ok=:,.0f} {count_fail=:,.0f} {swaps=}')
 
   while len(possible_swaps) > 1:
     x = randint(0, 1 << 45)
