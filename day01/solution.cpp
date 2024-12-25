@@ -4,6 +4,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -85,9 +86,33 @@ void part1(std::vector<int> left, std::vector<int> right, unsigned debug) {
   std::cout << "part 1: " << sumDistances << "\n";
 }
 
+void part2(std::vector<int> left, std::vector<int> right, unsigned debug) {
+  // map of distinct right values and their counts
+  std::map<int, int> rightCounts;
+  for (const int value : right) {
+    if (rightCounts.find(value) == rightCounts.end()) {
+      rightCounts.insert_or_assign(value, 1);
+    } else {
+      rightCounts[value]++;
+    }
+  }
+  if (debug > 0) {
+    std::cout << "rightCounts size: " << rightCounts.size() << "\n";
+  }
+  // sum (left * right count or 0)
+  int sumSimilarities = 0;
+  for (const int value : left) {
+    if (rightCounts.find(value) != rightCounts.end()) {
+      sumSimilarities += value * rightCounts[value];
+    }
+  }
+  std::cout << "part 2: " << sumSimilarities << "\n";
+}
+
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
   auto [left, right] = readData(args.filename, args.debug);
   part1(left, right, args.debug);
+  part2(left, right, args.debug);
   return 0;
 }
