@@ -5,8 +5,6 @@ from functools import cache
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
 FILENAME = 'example.txt'
-D4 = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-
 
 for arg in sys.argv[1:]:
   if arg == '-i': FILENAME = 'input.txt'
