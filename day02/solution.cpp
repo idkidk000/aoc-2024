@@ -69,34 +69,85 @@ std::vector<std::vector<int>> readData(std::string filename, unsigned debug) {
   return data;
 }
 
+std::vector<int> makeDeltas(std::vector<int> report) {
+  std::vector<int> deltas;
+  for (int i = 1; i < report.size(); i++) {
+    deltas.push_back(report[i] - report[i - 1]);
+  }
+  return deltas;
+}
+
+bool areDeltasSafe(std::vector<int> deltas, unsigned debug) {
+  const bool result = std::all_of(deltas.begin(), deltas.end(), [&](int x) {
+    return (x >= 0 == deltas[0] >= 0) &&
+           ((-3 <= x && x < 0) || (0 < x && x <= 3));
+  });
+  if (debug > 1) {
+    std::cout << "delta: ";
+    for (const auto delta : deltas) {
+      std::cout << delta << " ";
+    }
+    std::cout << "safe: " << std::boolalpha << result << "\n";
+  }
+  return result;
+}
+
 void part1(std::vector<std::vector<int>> data, unsigned debug) {
   int countSafe = 0;
   for (const auto report : data) {
-    std::vector<int> deltas;
-    for (int i = 1; i < report.size(); i++) {
-      deltas.push_back(report[i] - report[i - 1]);
-    }
-    const bool isSafe = std::all_of(deltas.begin(), deltas.end(), [&](int x) {
-      return (x >= 0 == deltas[0] >= 0) &&
-             ((-3 <= x && x < 0) || (0 < x && x <= 3));
-    });
-    if (isSafe)
+    if (areDeltasSafe(makeDeltas(report), debug))
       countSafe++;
-    if (debug > 0) {
-      std::cout << "delta: ";
-      for (const auto delta : deltas) {
-        std::cout << delta << " ";
-      }
-      std::cout << "safe: " << isSafe << "\n";
-    }
   }
   std::cout << "part 1: " << countSafe << "\n";
+}
+
+void vectorIntToStdout(std::vector<int> data, std::string label) {
+  std::cout << label << ":";
+  for (const auto item : data) {
+    std::cout << " " << item;
+  }
+  std::cout << "\n";
+}
+
+void part2(std::vector<std::vector<int>> data, unsigned debug) {
+  int countSafe = 0;
+  for (const auto report : data) {
+    const auto deltas = makeDeltas(report);
+    if (areDeltasSafe(deltas, 0)) {
+      countSafe++;
+      continue;
+    }
+    if (debug > 1) {
+      vectorIntToStdout(report, "orig report");
+      vectorIntToStdout(deltas, "orig deltas");
+    }
+    // loop over all report indices to drop
+    for (int i = 0; i < report.size(); i++) {
+      if (debug > 1)
+        std::cout << "drop i=" << i << "\n";
+      std::vector<int> dampedReport;
+      // loop over all indices and copy if not i
+      for (int j = 0; j < report.size(); j++) {
+        if (j == i)
+          continue;
+        dampedReport.push_back(report.at(j));
+      }
+      if (debug > 1)
+        vectorIntToStdout(dampedReport, "damped report");
+      if (areDeltasSafe(makeDeltas(dampedReport), debug)) {
+        countSafe++;
+        break;
+      }
+    }
+  }
+
+  std::cout << "part 2: " << countSafe << "\n";
 }
 
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
   auto data = readData(args.filename, args.debug);
   part1(data, args.debug);
-  // part2(data, args.debug);
+  part2(data, args.debug);
   return 0;
 }
