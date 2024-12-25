@@ -11,32 +11,21 @@ console.log({ FILENAME, DEBUG });
 const text = await Deno.readTextFile(FILENAME);
 if (DEBUG > 1) console.debug({ text });
 
-const locks = [];
-const keys = [];
+const locks: number[][] = [];
+const keys: number[][] = [];
 const rowCount = 7;
 
 for (const section of text.split('\n\n')) {
   const rows = section.split('\n').map((line) => line.split(''));
+  const isLock = rows[0][0] == '#';
   const heights = rows[0].map((_, colIx) =>
-    rows.reduce((acc, _, rowIx) => (rows[rowIx][colIx] == (rows[0][0] == '#' ? '#' : '.') ? rowIx : acc), 0)
+    rows.reduce((acc, _, rowIx) => (rows[rowIx][colIx] == (isLock ? '#' : '.') ? rowIx : acc), 0)
   );
-  if (rows[0][0] == '#') {
-    locks.push(heights);
-  } else {
-    keys.push(heights.map((i) => rowCount - i - 2));
-  }
+  (isLock ? locks : keys).push(heights.map((i) => (isLock ? i : rowCount - i - 2)));
 }
-if (DEBUG > 0) {
-  console.debug({ locks });
-  console.debug({ keys });
-}
-
-let fitCount = 0;
-for (const lock of locks) {
-  for (const key of keys) {
-    const fit = lock.every((li, i) => li + key[i] < rowCount - 1);
-    if (DEBUG > 0) console.debug({ lock, key, fit });
-    if (fit) fitCount++;
-  }
-}
+if (DEBUG > 0) console.debug({ locks, keys });
+const fitCount = locks.reduce(
+  (acc, lock) => acc + keys.filter((key) => key.every((ki, i) => ki + lock[i] < rowCount - 1)).length,
+  0
+);
 console.log('part 1', fitCount);
