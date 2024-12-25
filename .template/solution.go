@@ -11,14 +11,13 @@ type Coord struct {
 	x, y int
 }
 
-
 func main() {
 	// d4:=[][]int{{-1, 0},{0, 1},{1, 0},{0, -1}}
-	filename,debug:=parseArgs()
+	filename, debug := parseArgs()
 	fmt.Printf("filename: %s; debug: %d\n", filename, debug)
 	data := readData(filename)
 	fmt.Println(data)
-	if debug>0{
+	if debug > 0 {
 		fmt.Println(len(data))
 	}
 	// part1(data)

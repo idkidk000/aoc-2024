@@ -7,32 +7,32 @@ import (
 )
 
 func main() {
-	filename,debug:=parseArgs()
+	filename, debug := parseArgs()
 	fmt.Printf("filename: %s; debug: %d\n", filename, debug)
-	locks,keys,rows,cols := readData(filename)
-	if debug>0{
-		fmt.Println("locks",locks)
-		fmt.Println("keys",keys)
-		fmt.Println("rows",rows,"cols",cols)
+	locks, keys, rows, cols := readData(filename)
+	if debug > 0 {
+		fmt.Println("locks", locks)
+		fmt.Println("keys", keys)
+		fmt.Println("rows", rows, "cols", cols)
 	}
-	part1(locks,keys,rows,cols,debug)
+	part1(locks, keys, rows, cols, debug)
 }
 
-func part1(locks[][]int,keys[][]int,rows int,cols int,debug uint8){
-	fitCount:=0
-	for _,lock:=range locks{
-		for _,key:=range keys{
-			fit:=true
-			for c:=0;c<cols;c++{
-				if lock[c]+key[c]>=rows-1 {
-					fit=false
+func part1(locks [][]int, keys [][]int, rows int, cols int, debug uint8) {
+	fitCount := 0
+	for _, lock := range locks {
+		for _, key := range keys {
+			fit := true
+			for c := 0; c < cols; c++ {
+				if lock[c]+key[c] >= rows-1 {
+					fit = false
 					break
 				}
 			}
-			if debug>0 {
-				fmt.Println("lock",lock,"key",key,"fit",fit)
+			if debug > 0 {
+				fmt.Println("lock", lock, "key", key, "fit", fit)
 			}
-			if fit{
+			if fit {
 				fitCount++
 			}
 		}
@@ -68,32 +68,32 @@ func parseArgs() (filename string, debug uint8) {
 	return
 }
 
-func readData(filename string)(locks [][]int, keys [][]int, rows int, cols int){
+func readData(filename string) (locks [][]int, keys [][]int, rows int, cols int) {
 	content, _ := os.ReadFile(filename)
-	locks=make([][]int, 0)
-	keys=make([][]int, 0)
-	rows=7
-	cols=5
-	for _,item:=range strings.Split(string(content),"\n\n"){
+	locks = make([][]int, 0)
+	keys = make([][]int, 0)
+	rows = 7
+	cols = 5
+	for _, item := range strings.Split(string(content), "\n\n") {
 		// fmt.Println("item",item)
-		lines:=strings.Split(item,"\n")
-		heights:=make([]int,cols)
-		if string(lines[0][0])=="#" {
+		lines := strings.Split(item, "\n")
+		heights := make([]int, cols)
+		if string(lines[0][0]) == "#" {
 			//lock
-			for c:=0;c<cols;c++{
-				for r:=0;r<rows;r++{
-					if string(lines[r][c])=="." {
-						heights[c]=r-1
+			for c := 0; c < cols; c++ {
+				for r := 0; r < rows; r++ {
+					if string(lines[r][c]) == "." {
+						heights[c] = r - 1
 						break
 					}
 				}
 			}
 			locks = append(locks, heights)
 		} else {
-			for c:=0;c<cols;c++{
-				for r:=0;r<rows;r++{
-					if string(lines[r][c])=="#" {
-						heights[c]=rows-r-1
+			for c := 0; c < cols; c++ {
+				for r := 0; r < rows; r++ {
+					if string(lines[r][c]) == "#" {
+						heights[c] = rows - r - 1
 						break
 					}
 				}

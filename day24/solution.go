@@ -9,63 +9,65 @@ import (
 )
 
 type Gate struct {
-	operator,left,right string
+	operator, left, right string
 }
-
 
 func main() {
 	// d4:=[][]int{{-1, 0},{0, 1},{1, 0},{0, -1}}
-	filename,debug:=parseArgs()
+	filename, debug := parseArgs()
 	fmt.Printf("filename: %s; debug: %d\n", filename, debug)
-	wires,gates := readData(filename)
-	if debug>0{
-		fmt.Println("wires",wires)
-		fmt.Println("gates",gates)
+	wires, gates := readData(filename)
+	if debug > 0 {
+		fmt.Println("wires", wires)
+		fmt.Println("gates", gates)
 	}
-	part1(wires,gates,debug)
+	part1(wires, gates, debug)
 	// no part 2 since it needs to be solved by manual analysis. for the python solve, i created some helper functions and used the repl to investigate
 }
 
-func part1(wires map[string]bool,gates map[string]Gate,debug uint8){
-	var resolve func(gate string)(bool)
-	resolve=func(gate string)(bool){
-		if cached,ok:=wires[gate]; ok {
+func part1(wires map[string]bool, gates map[string]Gate, debug uint8) {
+	var resolve func(gate string) bool
+	resolve = func(gate string) bool {
+		if cached, ok := wires[gate]; ok {
 			return cached
 		}
-		definition:=gates[gate]
-		if debug>1{
-			fmt.Println("resolve",gate,definition)
+		definition := gates[gate]
+		if debug > 1 {
+			fmt.Println("resolve", gate, definition)
 		}
-		left:=resolve(definition.left)
-		right:=resolve(definition.right)
+		left := resolve(definition.left)
+		right := resolve(definition.right)
 		var result bool
-		switch definition.operator{
-		case "AND": result=left&&right
-		case "OR": result=left||right
-		case "XOR": result=left!=right
+		switch definition.operator {
+		case "AND":
+			result = left && right
+		case "OR":
+			result = left || right
+		case "XOR":
+			result = left != right
 		}
-		wires[gate]=result
+		wires[gate] = result
 		return result
 	}
-	zGates:=make([]string,0)
-	for gate:=range gates{
-		if string(gate[0])=="z"{
+	zGates := make([]string, 0)
+	for gate := range gates {
+		if string(gate[0]) == "z" {
 			zGates = append(zGates, gate)
 		}
 	}
 	sort.Slice(zGates, func(i, j int) bool {
-		return zGates[i]<zGates[j]
+		return zGates[i] < zGates[j]
 	})
-	if debug>0{
-		fmt.Println("zGates",zGates)
+	if debug > 0 {
+		fmt.Println("zGates", zGates)
 	}
-	result:=0
-	for i,zGate:=range zGates{
-		if resolve(zGate){
-			result+=1<<i
+	result := 0
+	for i, zGate := range zGates {
+		if resolve(zGate) {
+			result += 1 << i
 		}
 	}
-	fmt.Println("part 1",result)
+	fmt.Println("part 1", result)
 }
 
 func parseArgs() (filename string, debug uint8) {
@@ -96,9 +98,9 @@ func parseArgs() (filename string, debug uint8) {
 	return
 }
 
-func readData(filename string)(wires map[string]bool,gates map[string]Gate){
-	wires=make(map[string]bool)
-	gates=make(map[string]Gate,0)
+func readData(filename string) (wires map[string]bool, gates map[string]Gate) {
+	wires = make(map[string]bool)
+	gates = make(map[string]Gate, 0)
 
 	f, _ := os.Open(filename)
 	defer f.Close()
@@ -114,10 +116,10 @@ func readData(filename string)(wires map[string]bool,gates map[string]Gate){
 				continue
 			}
 			parts := strings.Split(line, ": ")
-			wires[parts[0]]=parts[1]=="1"
+			wires[parts[0]] = parts[1] == "1"
 		case 1:
 			parts := strings.Split(line, " ")
-			gates[parts[4]]=Gate{parts[1],parts[0],parts[2]}
+			gates[parts[4]] = Gate{parts[1], parts[0], parts[2]}
 		}
 	}
 	return
