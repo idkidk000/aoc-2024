@@ -11,43 +11,51 @@
 #include <vector>
 
 struct Args {
-  unsigned debug;
-  std::string filename;
+  std::string filename = "example.txt";
+  int debug = 0;
+  bool part1 = true;
+  bool part2 = true;
 };
 
 Args parseArgs(int argc, char *argv[]) {
   Args args;
-  args.debug = 0;
-  args.filename = "example.txt";
-
-  std::unordered_map<std::string, std::function<void()>> commandMap = {
+  std::unordered_map<std::string, std::function<void()>> argMap = {
       {"-i", [&]() { args.filename = "input.txt"; }},
       {"-d", [&]() { args.debug = 1; }},
+      {"-d1", [&]() { args.debug = 1; }},
       {"-d2", [&]() { args.debug = 2; }},
-      {"-d3", [&]() { args.debug = 3; }}};
-
+      {"-d3", [&]() { args.debug = 3; }},
+      {"-p1",
+       [&]() {
+         args.part1 = true;
+         args.part2 = false;
+       }},
+      {"-p2",
+       [&]() {
+         args.part1 = false;
+         args.part2 = true;
+       }},
+  };
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
-
     if (arg.rfind("-e", 0) == 0 && arg.size() > 2) {
       args.filename = "example" + arg.substr(2) + ".txt";
-    } else if (commandMap.find(arg) != commandMap.end()) {
-      commandMap[arg](); // Execute the associated action
+    } else if (argMap.find(arg) != argMap.end()) {
+      argMap[arg](); // Execute the associated action
     } else {
       throw std::runtime_error("unknown arg: " + arg);
     }
   }
-  std::cout << "debug = " << args.debug << "\n";
-  std::cout << "filename = " << args.filename << "\n";
+  std::cout << "filename: " << args.filename << "; debug: " << args.debug
+            << "; part 1: " << std::boolalpha << args.part1
+            << "; part 2: " << std::boolalpha << args.part2 << "\n";
   return args;
 }
 
-std::vector<std::vector<int>> readData(std::string filename, unsigned debug) {
+std::vector<std::vector<int>> readData(std::string filename, int debug) {
   std::vector<std::vector<int>> data;
-
   std::ifstream file(filename);
   if (file.is_open()) {
-  std:
     std::string line;
     while (std::getline(file, line)) {
       std::vector<int> report;
@@ -77,7 +85,7 @@ std::vector<int> makeDeltas(std::vector<int> report) {
   return deltas;
 }
 
-bool areDeltasSafe(std::vector<int> deltas, unsigned debug) {
+bool areDeltasSafe(std::vector<int> deltas, int debug) {
   const bool result = std::all_of(deltas.begin(), deltas.end(), [&](int x) {
     return (x >= 0 == deltas[0] >= 0) &&
            ((-3 <= x && x < 0) || (0 < x && x <= 3));
@@ -92,7 +100,7 @@ bool areDeltasSafe(std::vector<int> deltas, unsigned debug) {
   return result;
 }
 
-void part1(std::vector<std::vector<int>> data, unsigned debug) {
+void part1(std::vector<std::vector<int>> data, int debug) {
   int countSafe = 0;
   for (const auto report : data) {
     if (areDeltasSafe(makeDeltas(report), debug))
@@ -109,7 +117,7 @@ void vectorIntToStdout(std::vector<int> data, std::string label) {
   std::cout << "\n";
 }
 
-void part2(std::vector<std::vector<int>> data, unsigned debug) {
+void part2(std::vector<std::vector<int>> data, int debug) {
   int countSafe = 0;
   for (const auto report : data) {
     const auto deltas = makeDeltas(report);
@@ -140,14 +148,15 @@ void part2(std::vector<std::vector<int>> data, unsigned debug) {
       }
     }
   }
-
   std::cout << "part 2: " << countSafe << "\n";
 }
 
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
   auto data = readData(args.filename, args.debug);
-  part1(data, args.debug);
-  part2(data, args.debug);
+  if (args.part1)
+    part1(data, args.debug);
+  if (args.part2)
+    part2(data, args.debug);
   return 0;
 }
