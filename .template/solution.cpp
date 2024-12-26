@@ -16,6 +16,18 @@ struct Args {
   bool part2 = true;
 };
 
+struct TextGrid {
+  std::string data = "";
+  int rows = 0;
+  int cols = 0;
+  auto at(int row, int col) {
+    // save having to do oob checking
+    if (row < 0 || row >= rows || col < 0 || col >= cols)
+      return ' ';
+    return data.at(row * cols + col);
+  }
+};
+
 Args parseArgs(int argc, char *argv[]) {
   Args args;
   std::unordered_map<std::string, std::function<void()>> argMap = {
