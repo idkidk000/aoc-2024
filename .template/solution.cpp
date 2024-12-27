@@ -3,6 +3,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -29,10 +30,26 @@ struct TextGrid {
       return '#';
     return data.at(row * cols + col);
   }
-  std::pair<int, int> find(char c) {
+  std::pair<int, int> findFirst(char c) {
     // for finding start/end pos
     const int ix = data.find(c);
     return {ix / cols, ix % cols};
+  }
+  std::vector<std::pair<int, int>> findAll(char c) {
+    // for finding all instances
+    std::vector<std::pair<int, int>> result;
+    int ix = -1;
+    while ((ix = data.find(c, ix + 1)) != std::string::npos) {
+      result.push_back({ix / cols, ix % cols});
+    }
+    return result;
+  }
+  std::set<char> unique() {
+    std::set<char> result;
+    for (char c : data) {
+      result.insert(c);
+    }
+    return result;
   }
   bool oob(int row, int col) {
     return row < 0 || row >= rows || col < 0 || col >= cols;
@@ -86,36 +103,36 @@ Args parseArgs(int argc, char *argv[]) {
   return args;
 }
 
-std::pair<std::vector<int>, std::vector<int>> readData(std::string filename,
-                                                       int debug) {
-  std::vector<int> left;
+TextGrid readData(std::string filename, int debug) {
+  TextGrid data;
   std::vector<int> right;
   std::ifstream file(filename);
   if (file.is_open()) {
     std::string line;
     while (std::getline(file, line)) {
-      left.push_back(std::stoi(line.substr(0, 5)));
-      right.push_back(std::stoi(line.substr(8, 5)));
+      data.data += line;
+      if (data.cols == 0)
+        data.cols = line.size();
     }
+    data.rows = data.data.size() / data.cols;
     file.close();
   } else {
     throw std::runtime_error("cannot open: " + filename);
   }
   if (debug > 1) {
-    std::cout << "left len: " << left.size() << " first: " << left.at(0)
-              << "\n";
-    std::cout << "right len: " << right.size() << " first: " << right.at(0)
+    std::cout << "rows: " << data.rows << " cols: " << data.cols
+              << " size: " << data.data.size() << " at(0,0): " << data.at(0, 0)
               << "\n";
   }
-  return {left, right};
+  return data;
 }
 
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
-  auto [left, right] = readData(args.filename, args.debug);
+  auto data = readData(args.filename, args.debug);
   // if (args.part1)
-  //   part1(left, right, args.debug);
+  //   part1(data, args.debug);
   // if (args.part2)
-  //   part2(left, right, args.debug);
+  //   part2(data, args.debug);
   return 0;
 }
