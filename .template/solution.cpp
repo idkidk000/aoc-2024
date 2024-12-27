@@ -20,11 +20,34 @@ struct TextGrid {
   std::string data = "";
   int rows = 0;
   int cols = 0;
-  auto at(int row, int col) {
-    // save having to do oob checking
-    if (row < 0 || row >= rows || col < 0 || col >= cols)
+  int boxRow = -1;
+  int boxCol = -1;
+  char at(int row, int col) {
+    if (oob(row, col))
       return ' ';
+    if (row == boxRow && col == boxCol)
+      return '#';
     return data.at(row * cols + col);
+  }
+  std::pair<int, int> find(char c) {
+    // for finding start/end pos
+    const int ix = data.find(c);
+    return {ix / cols, ix % cols};
+  }
+  bool oob(int row, int col) {
+    return row < 0 || row >= rows || col < 0 || col >= cols;
+  };
+  // lightweight alternative to creating a new instance and copying/replacing
+  // string data
+  void box(int row = -1, int col = -1) { boxRow = row, boxCol = col; }
+  // the full version for days where we need it
+  void put(int row, int col, char c) {
+    // replace a single char on the grid
+    data.replace(row * cols + col, 1, std::string(1, c));
+  }
+  TextGrid clone() {
+    // pass data byval
+    return TextGrid{data, rows, cols};
   }
 };
 
