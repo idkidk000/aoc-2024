@@ -45,7 +45,11 @@ while guard[3]:
 print(f'part 1 {len(route_positions)=}')
 
 count_loop = 0
+# route_positions.clear()
+# route_positions.add((55, 86))
+# print(f'{route_positions=}')
 for route_position in route_positions:
+  # print(f'{route_position=}')
   row_ix = route_position[0]
   col_ix = route_position[1]
   if data[row_ix][col_ix] != '.': continue
@@ -74,6 +78,7 @@ for route_position in route_positions:
         if DEBUG: print(f'loop {row_ix=} {col_ix=} {len(history)=} {history=}')
         # exit()
         count_loop += 1
+        # print(f'loop {row_ix} {col_ix}')
         break
       else:
         history.add(next_position)
@@ -87,5 +92,6 @@ for route_position in route_positions:
       guard[2] = (guard[2] + 1) % 4
       history.add((guard[0], guard[1], guard[2]))
       # print(f'turn right {next_position=} {guard=}')
+      # print(f'  hit box at ({next_position[0]},{next_position[1]}) new d={guard[2]} r={guard[0]} c={guard[1]}')
 
 print(f'part 2: {count_loop=}')

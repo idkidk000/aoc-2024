@@ -23,51 +23,38 @@ struct TextGrid {
   std::string data = "";
   int rows = 0;
   int cols = 0;
-  auto at(int row, int col) {
-    // save having to do oob checking
-    if (row < 0 || row >= rows || col < 0 || col >= cols)
+  int boxRow = -1;
+  int boxCol = -1;
+  char at(int row, int col) {
+    if (oob(row, col))
       return ' ';
+    if (row == boxRow && col == boxCol)
+      return '#';
     return data.at(row * cols + col);
   }
   std::pair<int, int> find(char c) {
+    // for finding start/end pos
     const int ix = data.find(c);
     return {ix / cols, ix % cols};
   }
   bool oob(int row, int col) {
-    return !(0 <= row && row < rows && 0 <= col && col <= cols);
+    return row < 0 || row >= rows || col < 0 || col >= cols;
   };
-  void put(int row, int col, char c) {
-    // replace a single char on the grid
-    data.replace(row * cols + col, 1, std::string(1, c));
-  }
-  TextGrid clone() {
-    // pass data byval
-    return TextGrid{data, rows, cols};
-  }
+  // lightweight alternative to creating a new instance and copying/replacing
+  // string data
+  void box(int row = -1, int col = -1) { boxRow = row, boxCol = col; }
 };
 
 struct RowColDir {
   int r, c, d;
+  // so the struct can be added to a set
   bool operator<(const RowColDir &rhs) const {
     return r != rhs.r ? r < rhs.r : c != rhs.c ? c < rhs.c : d < rhs.d;
   }
   bool operator=(const RowColDir &rhs) const {
     return r == rhs.r && c == rhs.c && d == rhs.d;
   }
-  // int hash() {
-  //   // FIXME: extremely yikes because i have no idea what i'm doing actually
-  //   return (r * 7919) + (c * 401) + d;
-  // }
 };
-// for unordered_set
-// namespace std {
-// template <> struct hash<RowColDir> {
-//   size_t operator()(const RowColDir &key) const {
-//     return std::hash<int>()(key.r) ^ (std::hash<int>()(key.c) << 1) ^
-//            (std::hash<int>()(key.d) << 2);
-//   };
-// };
-// } // namespace std
 
 Args parseArgs(int argc, char *argv[]) {
   Args args;
@@ -178,57 +165,64 @@ void part2(TextGrid &grid, int debug) {
     int nr = r + dirs[d].first, nc = c + dirs[d].second;
     if (grid.at(nr, nc) == '#') {
       d = (d + 1) % 4;
-    } else {
-      if (!grid.oob(nr, nc)) {
-        boxLocations.insert({nr, nc});
-      }
-      r = nr, c = nc;
+      continue;
     }
+    if (!grid.oob(nr, nc))
+      boxLocations.insert({nr, nc});
+    r = nr, c = nc;
   };
   int loopCount = 0;
+  // boxLocations.clear();
+  // // boxLocations.insert({55, 85});
+  boxLocations.insert({55, 86});
   for (auto box : boxLocations) {
-    // clone the grid and shove a box in it
-    TextGrid boxGrid = grid.clone();
-    boxGrid.put(box.first, box.second, '#');
-    if (debug > 0)
-      std::cout << "box=(" << box.first << "," << box.second
-                << ") boxGrid.at=" << boxGrid.at(box.first, box.second) << "\n";
+    // DO NOT THE START
+    if (box.first == start.first && box.second == start.second)
+      continue;
+    debug = (box.first == 55 && box.second == 86) ? 3 : 0;
+    // add a pseudo box to grid
+    grid.box(box.first, box.second);
     // store a history of r,c,d so we can determine if we're in a loop
     std::set<RowColDir> boxPath;
     // reset to start
     int d = 0, r = start.first, c = start.second;
-    if (debug > 0)
-      std::cout << "start d=" << d << " r=" << r << " c=" << c << "\n";
     boxPath.insert({r, c, d});
-    while (!boxGrid.oob(r, c)) {
+    if (debug > 0)
+      std::cout << "box=(" << box.first << "," << box.second
+                << ") boxGrid.at=" << grid.at(box.first, box.second) << "\n";
+    while (!grid.oob(r, c)) {
       int nr = r + dirs[d].first, nc = c + dirs[d].second;
-      if (boxGrid.at(nr, nc) == '#') {
+      // turn or advance
+      if (grid.at(nr, nc) == '#') {
         d = (d + 1) % 4;
         if (debug > 1)
           std::cout << "  hit box at (" << nr << "," << nc << ") new d=" << d
                     << " r=" << r << " c=" << c << "\n";
-        continue;
+      } else {
+        r = nr, c = nc;
       }
-      if (!boxGrid.oob(nr, nc)) {
-        const auto rcd = RowColDir{nr, nc, d};
-        if (boxPath.find(rcd) != boxPath.end()) {
-          ++loopCount;
-          if (debug > 0)
-            std::cout << "  loop: box=(" << box.first << "," << box.second
-                      << ") nr=" << nr << " nc=" << nc << " d=" << d << "\n";
-          break;
-        } else {
-          boxPath.insert(rcd);
-        }
+      // loop check
+      const auto rcd = RowColDir{r, c, d};
+      if (boxPath.find(rcd) != boxPath.end()) {
+        if (debug > 0)
+          std::cout << "  loop: box=(" << box.first << "," << box.second
+                    << ") nr=" << nr << " nc=" << nc << " d=" << d << "\n";
+        ++loopCount;
+        break;
       }
-      r = nr, c = nc;
+      // add new rcd to path
+      boxPath.insert(rcd);
     }
     if (debug > 0)
       std::cout << "  end d=" << d << " r=" << r << " c=" << c << "\n";
   }
-  // BUG: works on example. returns 1720 for actual but the answer is 1719
-  // recheck RowColDir methods and everything about TextGrid
-  // create some simple test cases
+  /*
+    fixed bug:
+      start position was correctly ommitted from boxLocations on create but was
+    added during initial walk (albeit in a different direction)
+      it is invalid to put a box at the start position, but it does result in a
+    loop if you don't check for it before the walk
+  */
   std::cout << "part 2: " << loopCount << "\n";
 }
 
