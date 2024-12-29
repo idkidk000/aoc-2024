@@ -1,0 +1,28 @@
+---
+Language: Cpp
+ColumnLimit: 120
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 2
+IndentWidth: 2
+ObjCBlockIndentWidth: 2
+TabWidth: 2
+UseTab: Never
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: true
+BinPackArguments: true
+BinPackParameters: true
+AllowAllConstructorInitializersOnNextLine: false
+ReflowComments: false
+# BreakBeforeBraces: Custom
+BreakBeforeBraces: Attach
+BraceWrapping:
+  BeforeLambdaBody: false
+  AfterControlStatement: false
+AllowShortLambdasOnASingleLine: true
+AlwaysBreakAfterReturnType: None
+PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000
