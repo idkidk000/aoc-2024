@@ -50,6 +50,8 @@ struct TextGrid {
   void put(int row, int col, char c) { data.replace(row * cols + col, 1, std::string(1, c)); }
   int size() { return data.size(); }
   RowCol ixToRowCol(int ix) { return {ix / cols, ix % cols}; }
+  const std::array<RowCol, 4> d4 = {{{-1, 0}, {0, 1}, {1, 0}, {0, -1}}};
+  const std::array<RowCol, 8> d8 = {{{-1, 0}, {-1, 1}, {0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}}};
 };
 
 Args parseArgs(int argc, char *argv[]) {
