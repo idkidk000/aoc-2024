@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 struct Args {
@@ -15,55 +14,6 @@ struct Args {
   int debug = 0;
   bool part1 = true;
   bool part2 = true;
-};
-
-struct TextGrid {
-  std::string data = "";
-  int rows = 0;
-  int cols = 0;
-  int boxRow = -1;
-  int boxCol = -1;
-  char at(int row, int col) {
-    if (oob(row, col))
-      return ' ';
-    if (row == boxRow && col == boxCol)
-      return '#';
-    return data.at(row * cols + col);
-  }
-  std::pair<int, int> findFirst(char c) {
-    // for finding start/end pos
-    const int ix = data.find(c);
-    return {ix / cols, ix % cols};
-  }
-  std::vector<std::pair<int, int>> findAll(char c) {
-    // for finding all instances
-    std::vector<std::pair<int, int>> result;
-    int ix = -1;
-    while ((ix = data.find(c, ix + 1)) != std::string::npos) {
-      result.push_back({ix / cols, ix % cols});
-    }
-    return result;
-  }
-  std::set<char> unique() {
-    std::set<char> result;
-    for (char c : data) {
-      result.insert(c);
-    }
-    return result;
-  }
-  bool oob(int row, int col) { return row < 0 || row >= rows || col < 0 || col >= cols; };
-  // lightweight alternative to creating a new instance and copying/replacing
-  // string data
-  void box(int row = -1, int col = -1) { boxRow = row, boxCol = col; }
-  // the full version for days where we need it
-  void put(int row, int col, char c) {
-    // replace a single char on the grid
-    data.replace(row * cols + col, 1, std::string(1, c));
-  }
-  TextGrid clone() {
-    // pass data byval
-    return TextGrid{data, rows, cols};
-  }
 };
 
 struct RowCol {
@@ -76,36 +26,57 @@ struct RowColHash {
   std::size_t operator()(const RowCol &rhs) const { return std::hash<int>()(rhs.r) ^ (std::hash<int>()(rhs.c) << 1); }
 };
 
+struct TextGrid {
+  std::string data = "";
+  int rows = 0;
+  int cols = 0;
+  char at(int row, int col) { return oob(row, col) ? ' ' : data.at(row * cols + col); }
+  RowCol findFirst(char c) {
+    const int ix = data.find(c);
+    return {ix / cols, ix % cols};
+  }
+  std::vector<RowCol> findAll(char c) {
+    std::vector<RowCol> result;
+    int ix = -1;
+    while ((ix = data.find(c, ix + 1)) != std::string::npos) { result.push_back({ix / cols, ix % cols}); }
+    return result;
+  }
+  std::set<char> unique() {
+    std::set<char> result;
+    for (char c : data) { result.insert(c); }
+    return result;
+  }
+  bool oob(int row, int col) { return row < 0 || row >= rows || col < 0 || col >= cols; };
+  void put(int row, int col, char c) { data.replace(row * cols + col, 1, std::string(1, c)); }
+  int size() { return data.size(); }
+  RowCol ixToRowCol(int ix) { return {ix / cols, ix % cols}; }
+};
+
 Args parseArgs(int argc, char *argv[]) {
   Args args;
   std::unordered_map<std::string, std::function<void()>> argMap = {
+    {"-e", [&]() { args.filename = "example.txt"; }},
     {"-i", [&]() { args.filename = "input.txt"; }},
     {"-d", [&]() { args.debug = 1; }},
     {"-d1", [&]() { args.debug = 1; }},
     {"-d2", [&]() { args.debug = 2; }},
     {"-d3", [&]() { args.debug = 3; }},
-    {"-p1",
-     [&]() {
-       args.part1 = true;
-       args.part2 = false;
-     }},
-    {"-p2",
-     [&]() {
-       args.part1 = false;
-       args.part2 = true;
-     }},
+    {"-p0", [&]() { args.part1 = false, args.part2 = false; }},
+    {"-p1", [&]() { args.part1 = true, args.part2 = false; }},
+    {"-p2", [&]() { args.part1 = false, args.part2 = true; }},
   };
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
-    if (arg.rfind("-e", 0) == 0 && arg.size() > 2) {
+    if (arg.find("-e", 0) == 0 && arg.size() > 2) {
       args.filename = "example" + arg.substr(2) + ".txt";
     } else if (argMap.find(arg) != argMap.end()) {
-      argMap[arg](); // Execute the associated action
+      argMap[arg]();
     } else {
       throw std::runtime_error("unknown arg: " + arg);
     }
   }
-  std::cout << "filename: " << args.filename << "; debug: " << args.debug << "; part 1: " << std::boolalpha << args.part1 << "; part 2: " << std::boolalpha << args.part2 << "\n";
+  std::cout << std::format("filename: {}; debug: {}; part 1: {}; part 2: {}\n", args.filename, args.debug, args.part1,
+                           args.part2);
   return args;
 }
 
