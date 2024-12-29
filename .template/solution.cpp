@@ -3,17 +3,16 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <ostream>
 #include <set>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 struct Args {
-  std::string filename = "example.txt";
+  std::string filename = "input.txt";
   int debug = 0;
-  bool part1 = true;
-  bool part2 = true;
+  bool part1 = true, part2 = true;
 };
 
 struct RowCol {
@@ -28,87 +27,66 @@ struct RowColHash {
 
 struct TextGrid {
   std::string data = "";
-  int rows = 0;
-  int cols = 0;
-  char at(int row, int col) { return oob(row, col) ? ' ' : data.at(row * cols + col); }
-  RowCol findFirst(char c) {
-    const int ix = data.find(c);
-    return {ix / cols, ix % cols};
-  }
-  std::vector<RowCol> findAll(char c) {
-    std::vector<RowCol> result;
-    int ix = -1;
-    while ((ix = data.find(c, ix + 1)) != std::string::npos) { result.push_back({ix / cols, ix % cols}); }
-    return result;
-  }
-  std::set<char> unique() {
-    std::set<char> result;
-    for (char c : data) { result.insert(c); }
-    return result;
-  }
-  bool oob(int row, int col) { return row < 0 || row >= rows || col < 0 || col >= cols; };
-  void put(int row, int col, char c) { data.replace(row * cols + col, 1, std::string(1, c)); }
-  int size() { return data.size(); }
-  RowCol ixToRowCol(int ix) { return {ix / cols, ix % cols}; }
+  int rows = 0, cols = 0;
   const std::array<RowCol, 4> d4 = {{{-1, 0}, {0, 1}, {1, 0}, {0, -1}}};
   const std::array<RowCol, 8> d8 = {{{-1, 0}, {-1, 1}, {0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}}};
+  char at(int row, int col) { return oob(row, col) ? ' ' : data.at(row * cols + col); }
+  std::vector<RowCol> findAll(char c) {
+    std::vector<RowCol> result;
+    for (int i = data.find(c); i != std::string::npos; i = data.find(c, i + 1)) result.push_back({i / cols, i % cols});
+    return result;
+  }
+  RowCol findFirst(char c) { return toRowCol(data.find(c)); }
+  void load(std::string line) { data += line, cols = line.size(), rows = data.size() / cols; }
+  bool oob(int row, int col) { return row < 0 || row >= rows || col < 0 || col >= cols; };
+  void put(int row, int col, char c) { data.replace(row * cols + col, 1, std::string(1, c)); }
+  size_t size() { return data.size(); }
+  RowCol toRowCol(int ix) { return {ix / cols, ix % cols}; }
+  std::set<char> unique() { return {data.begin(), data.end()}; };
 };
+
+std::ostream &operator<<(std::ostream &os, const Args &v) {
+  return os << v.filename << "; debug=" << v.debug << "; part 1: " << (v.part1 ? "true" : "false")
+            << "; part 2: " << (v.part2 ? "true" : "false");
+}
+std::ostream &operator<<(std::ostream &os, const RowCol &v) { return os << "{" << v.r << "," << v.c << "}"; }
+std::ostream &operator<<(std::ostream &os, const TextGrid &v) { return os << "{" << v.rows << "x" << v.cols << "}"; }
 
 Args parseArgs(int argc, char *argv[]) {
   Args args;
-  std::unordered_map<std::string, std::function<void()>> argMap = {
-    {"-e", [&]() { args.filename = "example.txt"; }},
-    {"-i", [&]() { args.filename = "input.txt"; }},
-    {"-d", [&]() { args.debug = 1; }},
-    {"-d1", [&]() { args.debug = 1; }},
-    {"-d2", [&]() { args.debug = 2; }},
-    {"-d3", [&]() { args.debug = 3; }},
-    {"-p0", [&]() { args.part1 = false, args.part2 = false; }},
-    {"-p1", [&]() { args.part1 = true, args.part2 = false; }},
-    {"-p2", [&]() { args.part1 = false, args.part2 = true; }},
-  };
   for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i];
-    if (arg.find("-e", 0) == 0 && arg.size() > 2) {
-      args.filename = "example" + arg.substr(2) + ".txt";
-    } else if (argMap.find(arg) != argMap.end()) {
-      argMap[arg]();
-    } else {
+    const std::string arg = argv[i];
+    if (arg.find("-d", 0) == 0)
+      args.debug = arg.size() > 2 ? std::stoi(arg.substr(2)) : 1;
+    else if (arg.find("-e", 0) == 0)
+      args.filename = "example" + (arg.size() > 2 ? arg.substr(2) : "") + ".txt";
+    else if (arg.find("-p", 0) == 0 && arg.size() == 3)
+      args.part1 = arg.substr(2) == "1", args.part2 = arg.substr(2) == "2";
+    else
       throw std::runtime_error("unknown arg: " + arg);
-    }
   }
-  std::cout << std::format("filename: {}; debug: {}; part 1: {}; part 2: {}\n", args.filename, args.debug, args.part1,
-                           args.part2);
+  std::cout << args << "\n";
   return args;
 }
 
 TextGrid readData(std::string filename, int debug) {
-  TextGrid data;
-  std::vector<int> right;
+  TextGrid grid;
   std::ifstream file(filename);
   if (file.is_open()) {
     std::string line;
-    while (std::getline(file, line)) {
-      data.data += line;
-      if (data.cols == 0)
-        data.cols = line.size();
-    }
-    data.rows = data.data.size() / data.cols;
+    while (std::getline(file, line)) grid.load(line);
     file.close();
-  } else {
-    throw std::runtime_error("cannot open: " + filename);
+    if (debug > 1) std::cout << "grid: " << grid << "\n";
+    return grid;
   }
-  if (debug > 1) {
-    std::cout << "rows: " << data.rows << " cols: " << data.cols << " size: " << data.data.size() << " at(0,0): " << data.at(0, 0) << "\n";
-  }
-  return data;
+  throw std::runtime_error("cannot open: " + filename);
 }
 
 void solve(TextGrid &grid, Args) {}
 
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
-  auto data = readData(args.filename, args.debug);
-  solve(data, args);
+  auto grid = readData(args.filename, args.debug);
+  solve(grid, args);
   return 0;
 }
