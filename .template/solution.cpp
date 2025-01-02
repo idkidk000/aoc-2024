@@ -124,11 +124,11 @@ TextGrid readData(std::string filename, int debug) {
   return grid;
 }
 
-void solve(TextGrid &grid, Args) {}
+void part1(TextGrid &grid, Args) {}
 
 int main(int argc, char *argv[]) {
   auto args = parseArgs(argc, argv);
   auto grid = readData(args.filename, args.debug);
-  solve(grid, args);
+  part1(grid, args);
   return 0;
 }
