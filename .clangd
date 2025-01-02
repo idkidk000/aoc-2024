@@ -1,3 +1,8 @@
 CompileFlags:
   Add: ["-std=c++23"]
   Compiler: gcc
+InlayHints:
+  Designators: false
+  ParameterNames: false
+  DeducedTypes: true
+  Enabled: true

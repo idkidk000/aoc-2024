@@ -1,4 +1,5 @@
 #include <cassert>
+#include <concepts>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -9,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#pragma region template
 struct Args {
   std::string filename = "input.txt";
   int debug = 0;
@@ -45,6 +47,47 @@ struct TextGrid {
   std::set<char> unique() { return {data.begin(), data.end()}; };
 };
 
+//still waiting to find out that these very normal functions do exist in std but have silly names
+template <typename T> bool in(T val, std::vector<T> vec) { return std::find(vec.begin(), vec.end(), val) != vec.end(); }
+template <typename T> std::string join(std::vector<T> vec, std::string sep = ",") {
+  std::string result = "";
+  for (const auto &v : vec) {
+    if constexpr (std::is_convertible_v<T, std::string>)
+      result += v + sep;
+    else
+      result += std::to_string(v) + sep;
+  }
+  return result.size() > sep.size() ? result.substr(0, result.size() - sep.size()) : result;
+}
+std::vector<std::string> split(std::string val, std::string sep = " ") {
+  std::vector<std::string> result = {};
+  int li = 0; //stringstream and getline only work if sep is a char
+  for (size_t i = val.find(sep); i != std::string::npos; i = val.find(sep, li))
+    result.push_back(val.substr(li, i)), li = i + sep.size();
+  result.push_back(val.substr(li));
+  return result;
+}
+template <std::integral T> T pMod(T val, T mod) { //any integer type
+  const auto result = val % mod;
+  return result < 0 ? result + mod : result;
+}
+std::string replaceAll(std::string val, std::string find, std::string replace) {
+  std::string result = "";
+  int li = 0;
+  for (size_t i = val.find(find); i != std::string::npos; i = val.find(find, li))
+    result += val.substr(li, i), li = i + find.size();
+  result += val.substr(li);
+  return result;
+}
+
+//std::format
+template <> struct std::formatter<RowCol> : std::formatter<std::string> {
+  auto format(const RowCol &v, auto &ctx) {
+    return std::formatter<std::string>::format("{" + std::to_string(v.r) + "," + std::to_string(v.c) + "}", ctx);
+  };
+};
+
+//std::cout
 std::ostream &operator<<(std::ostream &os, const Args &v) {
   return os << v.filename << "; debug=" << v.debug << "; part 1: " << (v.part1 ? "true" : "false")
             << "; part 2: " << (v.part2 ? "true" : "false");
@@ -56,11 +99,11 @@ Args parseArgs(int argc, char *argv[]) {
   Args args;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
-    if (arg.find("-d", 0) == 0)
+    if (arg.find("-d") == 0)
       args.debug = arg.size() > 2 ? std::stoi(arg.substr(2)) : 1;
-    else if (arg.find("-e", 0) == 0)
+    else if (arg.find("-e") == 0)
       args.filename = "example" + (arg.size() > 2 ? arg.substr(2) : "") + ".txt";
-    else if (arg.find("-p", 0) == 0 && arg.size() == 3)
+    else if (arg.find("-p") == 0 && arg.size() == 3)
       args.part1 = arg.substr(2) == "1", args.part2 = arg.substr(2) == "2";
     else
       throw std::runtime_error("unknown arg: " + arg);
@@ -68,18 +111,17 @@ Args parseArgs(int argc, char *argv[]) {
   std::cout << args << "\n";
   return args;
 }
+#pragma endregion
 
 TextGrid readData(std::string filename, int debug) {
   TextGrid grid;
   std::ifstream file(filename);
-  if (file.is_open()) {
-    std::string line;
-    while (std::getline(file, line)) grid.load(line);
-    file.close();
-    if (debug > 1) std::cout << "grid: " << grid << "\n";
-    return grid;
-  }
-  throw std::runtime_error("cannot open: " + filename);
+  if (!file.is_open()) throw std::runtime_error("cannot open: " + filename);
+  std::string line;
+  while (std::getline(file, line)) grid.load(line);
+  file.close();
+  if (debug > 1) std::cout << "grid: " << grid << "\n";
+  return grid;
 }
 
 void solve(TextGrid &grid, Args) {}
