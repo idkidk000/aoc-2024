@@ -1,14 +1,12 @@
 #include <cassert>
 #include <cstdlib>
 #include <fstream>
-#include <functional>
 #include <iostream>
 #include <map>
 #include <ostream>
 #include <stdexcept>
 #include <string>
 #include <sys/types.h>
-#include <unordered_map>
 #include <vector>
 
 #pragma region template
