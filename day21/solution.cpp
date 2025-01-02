@@ -218,8 +218,9 @@ walkKeypads(const int &debug) {
           }
           paths.pop_front();
         }
-        //BUG: (maybe) this is definitely either +0,+1,+2, or some other thing
-        sequencePresses[cacheKey] = shortest + 0;
+        //BUG: i *think* we're caching the depth 1 press count here, not the depth 0
+        sequencePresses[cacheKey] = 2;
+        sequencePresses[cacheKey + " 1"] = shortest;
         if (debug > 1)
           std::cout << std::format("{}: length: {}; paths: {}\n", cacheKey, sequencePresses.at(cacheKey),
                                    join(sequencePaths.at(cacheKey)));
@@ -234,7 +235,11 @@ long getDirectionalPresses(const std::string &sequence, const int &depth,
                            std::unordered_map<std::string, long> &sequencePresses, const int &debug) {
   //BUG: (maybe) cacheKey and subsequence loop behaviour might need to treat 1 as the lowest level rather than 0 since we're doing the initial translation from numeric to directional in the getPresses function
   const auto &cacheKey = depth == 0 ? sequence : std::format("{} {}", sequence, depth);
-  if (sequencePresses.contains(cacheKey)) return sequencePresses.at(cacheKey);
+  if (sequencePresses.contains(cacheKey)) {
+    const auto &presses = sequencePresses.at(cacheKey);
+    if (debug > 2) std::cout << std::format("    top {} depth {} from cache {}\n", sequence, depth, presses);
+    return presses;
+  };
   const auto &prefixedSequence = "A" + sequence;
   long total = 0;
   for (int i = 1; i < prefixedSequence.size(); ++i) {
@@ -245,10 +250,14 @@ long getDirectionalPresses(const std::string &sequence, const int &depth,
         shortest =
           std::min(shortest, getDirectionalPresses(subsequence, depth - 1, sequencePaths, sequencePresses, debug));
       }
+
+      if (debug > 2) std::cout << std::format("    sub {} depth {} from recursion {}\n", subsequence, depth, shortest);
       total += shortest;
     } else {
       // all l0 key to key moves are definitely cached
-      total += sequencePresses.at(subsequence);
+      const auto &presses = sequencePresses.at(subsequence);
+      if (debug > 2) std::cout << std::format("    sub {} depth {} from cache {}\n", subsequence, depth, presses);
+      total += presses;
     }
   }
   sequencePresses[cacheKey] = total;
@@ -264,8 +273,11 @@ long getPresses(const std::string &sequence, const int &depth,
   for (int i = 1; i < prefixedSequence.size(); ++i) {
     const auto &subsequence = prefixedSequence.substr(i - 1, 2);
     long shortest = LONG_MAX;
+    if (debug > 0) std::cout << std::format("{}[{}:2] {} depth {}\n", prefixedSequence, i, subsequence, depth);
     for (const auto &path : sequencePaths.at(subsequence)) {
-      shortest = std::min(shortest, getDirectionalPresses(path, depth, sequencePaths, sequencePresses, debug));
+      const auto &presses = getDirectionalPresses(path, depth, sequencePaths, sequencePresses, debug);
+      if (debug > 1) std::cout << std::format("  path {}; presses: {}\n", path, presses);
+      shortest = std::min(shortest, presses);
     }
     if (debug > 0)
       std::cout << std::format("{}[{}:2] {} depth {} shortest {}\n", prefixedSequence, i, subsequence, depth, shortest);
@@ -274,26 +286,37 @@ long getPresses(const std::string &sequence, const int &depth,
   return total;
 }
 
-void part1(const std::vector<std::string> &sequences,
+long solve(const std::vector<std::string> &sequences, int depth,
            const std::unordered_map<std::string, std::vector<std::string>> &sequencePaths,
            std::unordered_map<std::string, long> sequencePresses, const int &debug) {
   long total = 0;
   for (const auto &sequence : sequences) {
     const long &sequenceInt = std::stoi(sequence.substr(0, sequence.size() - 1));
-    const auto &presses = getPresses(sequence, 0, sequencePaths, sequencePresses, debug);
+    const auto &presses = getPresses(sequence, depth, sequencePaths, sequencePresses, debug);
     const auto &complexity = sequenceInt * presses;
     if (debug > 0)
       std::cout << std::format("sequence: {}; int: {}; presses: {}; complexity: {}\n", sequence, sequenceInt, presses,
                                complexity);
     total += complexity;
   }
-  std::cout << "part 1: " << total << "\n";
+  return total;
 }
 
 int main(int argc, char *argv[]) {
   const auto &args = parseArgs(argc, argv);
-  const auto &sequences = readData(args.filename, args.debug);
-  const auto &[sequencePaths, sequencePresses] = walkKeypads(args.debug);
-  if (args.part1) part1(sequences, sequencePaths, sequencePresses, args.debug);
+  const auto &sequences = readData(args.filename, 0);
+  const auto &[sequencePaths, sequencePresses] = walkKeypads(args.debug - 1);
+  if (args.part1) {
+    const auto &result = solve(sequences, 3, sequencePaths, sequencePresses, args.debug);
+    std::cout << "part 1: " << result << "\n";
+  }
+  if (args.part2) {
+    const auto &result = solve(sequences, 25, sequencePaths, sequencePresses, args.debug);
+    std::cout << "part 2: " << result << "\n";
+  }
+  if (!(args.part1 || args.part2)) {
+    const auto &result = solve(sequences, 0, sequencePaths, sequencePresses, args.debug);
+    std::cout << "part 0: " << result << "\n";
+  }
   return 0;
 }
