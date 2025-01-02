@@ -3,6 +3,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -44,13 +45,8 @@ Args parseArgs(int argc, char *argv[]) {
 struct Sequence {
   short a, b, c, d;
   bool operator==(const Sequence &rhs) const { return a == rhs.a && b == rhs.b && c == rhs.c && d == rhs.d; }
-};
-
-struct SequenceHash {
-  //FIXME: this feels a bit hash collision-y
-  std::size_t operator()(const Sequence &rhs) const {
-    return std::hash<short>()(rhs.a) ^ (std::hash<short>()(rhs.b) << 1) ^ (std::hash<short>()(rhs.c) << 2) ^
-           (std::hash<short>()(rhs.d) << 3);
+  bool operator<(const Sequence &rhs) const {
+    return rhs.a != a ? a < rhs.a : rhs.b != b ? b < rhs.b : rhs.c != c ? c < rhs.c : d < rhs.d;
   }
 };
 
@@ -83,7 +79,7 @@ void part1(const std::vector<long> &secrets, const int &debug) {
   std::cout << "part 1: " << result << "\n";
 }
 
-std::unordered_map<Sequence, ushort, SequenceHash> genSequencePrices(long secret, const int &debug) {
+std::map<Sequence, ushort> genSequencePrices(long secret, const int &debug) {
   /*
     generate values
     declare a map[sequence]price
@@ -93,30 +89,23 @@ std::unordered_map<Sequence, ushort, SequenceHash> genSequencePrices(long secret
   */
   const uint count = 2000;
   if (debug > 1) std::cout << std::format("generate values for {}\n", secret);
-  std::vector<ushort> values;
-  // allocate up front because i learned a thing
-  values.reserve(count);
+  ushort value, prevValue;
+  std::array<short, count - 1> deltas;
+  std::map<Sequence, ushort> result;
   for (uint i = 0; i < count; ++i) {
     secret = evolve(secret);
-    values.push_back(secret % 10);
-  }
-  if (debug > 1) std::cout << "  generate deltas\n";
-  std::vector<short> deltas;
-  deltas.reserve(count - 1);
-  //precompute deltas
-  for (uint i = 1; i < count; ++i) deltas.push_back(values[i] - values[i - 1]);
-
-  if (debug > 1) std::cout << "  generate map\n";
-  std::unordered_map<Sequence, ushort, SequenceHash> result;
-  for (int i = 4; i < count; ++i) {
-    //deltas are 1 ahead so this should be fine
-    Sequence sequence = {
-      deltas[i - 4],
-      deltas[i - 3],
-      deltas[i - 2],
-      deltas[i - 1],
-    };
-    if (!result.contains(sequence)) result[sequence] = values[i];
+    value = secret % 10;
+    if (i > 1) deltas[i - 1] = value - prevValue;
+    if (i > 4) {
+      Sequence sequence = {
+        deltas[i - 4],
+        deltas[i - 3],
+        deltas[i - 2],
+        deltas[i - 1],
+      };
+      if (!result.contains(sequence)) result[sequence] = value;
+    }
+    prevValue = value;
   }
   if (debug > 1) std::cout << std::format("  return size: {}\n", result.size());
   return result;
@@ -127,7 +116,7 @@ void part2(const std::vector<long> &secrets, const int &debug) {
     merge per-initial-secret sequence/price map into sequenceTotals
     iterate over and find the key for the highest value
   */
-  std::unordered_map<Sequence, uint, SequenceHash> sequenceTotals;
+  std::map<Sequence, uint> sequenceTotals;
   for (auto secret : secrets) {
     const auto &prices = genSequencePrices(secret, debug);
     for (const auto &[k, v] : prices) { sequenceTotals[k] += v; }
