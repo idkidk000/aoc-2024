@@ -4,17 +4,25 @@ from functools import cache
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
-FILENAME = 'example.txt'
+FILENAME = 'input.txt'
+PART1 = PART2 = True
 D4 = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 for arg in sys.argv[1:]:
-  if arg == '-i': FILENAME = 'input.txt'
-  elif arg == '-e': FILENAME = 'example.txt'
-  elif arg.startswith('-e'): FILENAME = f'example{arg[-1]}.txt'
-  elif arg == '-d': DEBUG = 1
-  elif arg == '-d2': DEBUG = 2
-  elif arg == '-d3': DEBUG = 3
-  else: raise Exception(f'unknown {arg=}')
+  if arg.startswith('-e'): FILENAME = f'''example{arg[2:] if len(arg)>2 else ''}.txt'''
+  elif arg.startswith('-d'): DEBUG = int(arg[2:]) if len(arg) > 2 else 1
+  else:
+    match arg:
+      case '-i':
+        FILENAME = 'input.txt'
+      case 'p1':
+        PART1, PART2 = True, False
+      case 'p2':
+        PART1, PART2 = False, True
+      case 'p0':
+        PART1, PART2 = False, False
+      case _:
+        raise Exception(f'unknown {arg=}')
 
 with open(FILENAME, 'r') as f:
   text = f.read()
