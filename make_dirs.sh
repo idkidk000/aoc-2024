@@ -1,2 +1,11 @@
 #!/usr/bin/env bash
-for ((i=1;i<26;i++)); do printf -v day 'day%02d' $i; for ((j=1;j<3;j++)); do mkdir -p "$day/part$j"; done; done
+declare -r year="${1:-$(date +%Y)}"
+declare -a dirs
+for ((i=1;i<26;i++)); do
+  printf -v dir '%04d/day%02d' $year $i
+  dirs+=("$dir")
+done
+echo "dirs: ${dirs[*]}"
+read -ep "ok to create? y/n: " response
+[ "${response,,}" == 'y' ] || exit
+mkdir -p "${dirs[@]}"

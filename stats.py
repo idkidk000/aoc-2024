@@ -3,7 +3,7 @@ import os
 import re
 
 IGNORE_EXTS = ['txt']
-DIR_REGEX = re.compile(r'^\./day\d+$')
+DIR_REGEX = re.compile(r'^\./20[\d]{2}/day\d+$')
 GAP='  '
 
 files = sorted(os.walk('.'))

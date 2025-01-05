@@ -158,8 +158,7 @@ walkKeypads(const int &debug) {
           paths.pop_front();
         }
         //BUG: i *think* we're caching the depth 1 press count here, not the depth 0
-        sequencePresses[cacheKey] = 2;
-        sequencePresses[cacheKey + " 1"] = shortest;
+        sequencePresses[cacheKey] = shortest;
         if (debug > 1)
           std::cout << std::format("{}: length: {}; paths: {}\n", cacheKey, sequencePresses.at(cacheKey),
                                    join(sequencePaths.at(cacheKey)));
@@ -173,32 +172,37 @@ long getDirectionalPresses(const std::string &sequence, const int &depth,
                            const std::unordered_map<std::string, std::vector<std::string>> &sequencePaths,
                            std::unordered_map<std::string, long> &sequencePresses, const int &debug) {
   //BUG: (maybe) cacheKey and subsequence loop behaviour might need to treat 1 as the lowest level rather than 0 since we're doing the initial translation from numeric to directional in the getPresses function
-  const auto &cacheKey = depth == 0 ? sequence : std::format("{} {}", sequence, depth);
+  const auto &cacheKey = depth == 1 ? sequence : std::format("{} {}", sequence, depth);
   if (sequencePresses.contains(cacheKey)) {
     const auto &presses = sequencePresses.at(cacheKey);
     if (debug > 2) std::cout << std::format("    top {} depth {} from cache {}\n", sequence, depth, presses);
     return presses;
   };
+
   const auto &prefixedSequence = "A" + sequence;
   long total = 0;
   for (int i = 1; i < prefixedSequence.size(); ++i) {
     const auto &subsequence = prefixedSequence.substr(i - 1, 2);
-    if (depth >= 1) {
+    if (depth > 1) {
       long shortest = LONG_MAX;
       for (const auto &path : sequencePaths.at(subsequence)) {
         shortest =
           std::min(shortest, getDirectionalPresses(subsequence, depth - 1, sequencePaths, sequencePresses, debug));
       }
 
-      if (debug > 2) std::cout << std::format("    sub {} depth {} from recursion {}\n", subsequence, depth, shortest);
+      if (debug > 2)
+        std::cout << std::format("    sub {} depth {} from recursion {}\n", subsequence, depth - 1, shortest);
       total += shortest;
     } else {
+      //BUG: here. the output numbers are too high because the paths in sequencePresses are another level of abstraction
       // all l0 key to key moves are definitely cached
       const auto &presses = sequencePresses.at(subsequence);
-      if (debug > 2) std::cout << std::format("    sub {} depth {} from cache {}\n", subsequence, depth, presses);
+      // const auto presses = 1;
+      if (debug > 2) std::cout << std::format("    sub {} depth {} from cache {}\n", subsequence, depth - 1, presses);
       total += presses;
     }
   }
+  if (debug > 2) std::cout << std::format("  {} depth {} return {}\n", sequence, depth, total);
   sequencePresses[cacheKey] = total;
   return total;
 }
@@ -254,7 +258,7 @@ int main(int argc, char *argv[]) {
     std::cout << "part 2: " << result << "\n";
   }
   if (!(args.part1 || args.part2)) {
-    const auto &result = solve(sequences, 0, sequencePaths, sequencePresses, args.debug);
+    const auto &result = solve(sequences, 1, sequencePaths, sequencePresses, args.debug);
     std::cout << "part 0: " << result << "\n";
   }
   return 0;
