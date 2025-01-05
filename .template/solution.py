@@ -15,11 +15,11 @@ for arg in sys.argv[1:]:
     match arg:
       case '-i':
         FILENAME = 'input.txt'
-      case 'p1':
+      case '-p1':
         PART1, PART2 = True, False
-      case 'p2':
+      case '-p2':
         PART1, PART2 = False, True
-      case 'p0':
+      case '-p0':
         PART1, PART2 = False, False
       case _:
         raise Exception(f'unknown {arg=}')
@@ -37,3 +37,15 @@ def draw_map(map_data: list[list[str]]):
     for r in range(rows):
       print(f'''{r: 3d}  {''.join(map_data[r])}''')
     print(f'{rows=} {cols=}')
+
+
+def part1():
+  ...
+
+
+def part2():
+  ...
+
+
+if PART1: part1()
+if PART2: part2()
