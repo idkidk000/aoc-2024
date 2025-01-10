@@ -30,7 +30,7 @@ rows, cols = len(grid), len(grid[0])
 
 # yapf: disable
 class Path():
-  r: int; c: int; d: int; cost: int; turned: int; ultra: bool; hist: set[tuple[int,int,int]]
+  r: int; c: int; d: int; cost: int; streak: int; ultra: bool; hist: set[tuple[int,int,int]]; min_streak: int; max_streak: int
   # yapf: enable
 
   def __init__(
@@ -39,12 +39,15 @@ class Path():
     c: int,
     d: int,
     cost: int = 0,
-    turned: int = 0,  # the initial placement isn't a move
+    streak: int = 0,  # the initial placement isn't a move
     hist: set[tuple[int, int, int]] = set(),
+    min_streak: int = 999,
+    max_streak: int = 0,
     ultra: bool = False
   ):
     self.r, self.c, self.d = r, c, d
-    self.cost, self.turned, self.ultra = cost, turned, ultra
+    self.cost, self.streak, self.ultra = cost, streak, ultra
+    self.min_streak, self.max_streak = min_streak, max_streak
     self.hist = {*hist}
     if DEBUG > 0: self.hist.add((r, c, d))
 
@@ -55,25 +58,29 @@ class Path():
     r, c = self.r + D4[d][0], self.c + D4[d][1]
     if not (0 <= r < rows and 0 <= c < cols): return None
     cost = self.cost + grid[r][c]
-    # updated turned to be 1-based to maybe avoid off by ones
-    return Path(r, c, d, cost, 1 if turn else self.turned + 1, self.hist, self.ultra)  #type: ignore
+    # updated streak to be 1-based to maybe avoid off by ones
+    streak=1 if turn else self.streak + 1
+    # validation
+    min_streak=min(self.streak,self.min_streak) if turn else self.min_streak
+    max_streak=max(self.streak,self.max_streak) if turn else self.max_streak
+    return Path(r, c, d, cost, streak, self.hist, min_streak, max_streak, self.ultra)  #type: ignore
 
   # yapf: disable
   @property
-  def can_turn(self) -> bool: return self.turned >= 4 or not self.ultra
+  def can_turn(self) -> bool: return self.streak >= 4 or not self.ultra
 
   @property
-  def must_turn(self) -> bool: return self.turned >= (10 if self.ultra else 3)
+  def must_turn(self) -> bool: return self.streak >= (10 if self.ultra else 3)
 
   @property
   def rc(self): return (self.r, self.c)
 
   @property
-  def rcdt(self): return (self.r, self.c, self.d, self.turned)
+  def rcdt(self): return (self.r, self.c, self.d, self.streak)
 
   def __lt__(self, other) -> bool: return self.cost < other.cost
 
-  def __repr__(self) -> str: return f'<Path ultra={self.ultra} r={self.r} c={self.c} d={self.d} cost={self.cost} turned={self.turned}>'
+  def __repr__(self) -> str: return f'<Path ultra={self.ultra} r={self.r} c={self.c} d={self.d} cost={self.cost} streak={self.streak}>'
   # yapf: enable
 
 
@@ -86,7 +93,7 @@ def solve(ultra: bool = False):
   start = (0, 0, 1)
   end = (rows - 1, cols - 1)
   path = Path(*start, ultra=ultra)
-  # row, col, dir, (moves since) turned. for path pruning
+  # row, col, dir, (moves since) streak. for path pruning
   tile_costs: dict[tuple[int, int, int, int], int] = {path.rcdt: 0}
   # PriorityQueue sorts items on put. so Path has a __lt__ method based on cost, which is way better than trying to pushleft and push to a deque
   paths: PriorityQueue[Path] = PriorityQueue()
@@ -117,10 +124,15 @@ def solve(ultra: bool = False):
   assert best_path
   if DEBUG > 0:
     grid_copy = [[str(y) for y in x] for x in grid]
+    cost_validate=0
     for r, c, d in best_path.hist:
+      # this is bug prone actually since a path could maybe go over the same tile in the same direction twice
+      if (r,c)!=(start[0],start[1]):
+        cost_validate+=grid[r][c]
       item = grid_copy[r][c]
       grid_copy[r][c] = f'\x1b[7;{31+d}m{item}\x1b[0m'
     draw_grid(grid_copy)
+    print(f'{cost_validate=} {path.min_streak=} {path.max_streak=}')
 
   return best_path.cost
 
