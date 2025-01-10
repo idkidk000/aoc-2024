@@ -15,5 +15,5 @@ all_exts = sorted({
 for dir_path, dir_names, file_names in files:
   if len(file_names) == 0 or not re.match(DIR_REGEX, dir_path): continue
   day = dir_path.removeprefix('./')
-  exts = [x.split('.')[-1] for x in file_names if not x.startswith('.')]
+  exts = [x.split('.')[-1] for x in file_names if x.startswith('solution.')]
   print(f'''{day}{GAP}{GAP.join([x if x in exts else (' ' * len(x)) for x in all_exts])}''')
