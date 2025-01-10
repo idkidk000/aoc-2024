@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from typing import Any, Self
+from typing import Self
 from queue import PriorityQueue
 
 sys.setrecursionlimit(1_000_000)
@@ -30,7 +30,7 @@ rows, cols = len(grid), len(grid[0])
 
 # yapf: disable
 class Path():
-  r: int; c: int; d: int; cost: int; turned: int; ultra: bool; hist: set[tuple[int,int]]
+  r: int; c: int; d: int; cost: int; turned: int; ultra: bool; hist: set[tuple[int,int,int]]
   # yapf: enable
 
   def __init__(
@@ -40,25 +40,23 @@ class Path():
     d: int,
     cost: int = 0,
     turned: int = 0,  # the initial placement isn't a move
-    hist: set[tuple[int, int]] = set(),
+    hist: set[tuple[int, int, int]] = set(),
     ultra: bool = False
   ):
     self.r, self.c, self.d = r, c, d
     self.cost, self.turned, self.ultra = cost, turned, ultra
     self.hist = {*hist}
-    if DEBUG > 0: self.hist.add((r, c))
+    if DEBUG > 0: self.hist.add((r, c, d))
 
   def move(self, turn: int) -> Self | None:
     if turn == 0 and self.must_turn: return None
     if turn != 0 and not self.can_turn: return None
     d = (self.d + turn) % 4
     r, c = self.r + D4[d][0], self.c + D4[d][1]
-    if r < 0 or r >= rows or c < 0 or c >= cols: return None
+    if not (0 <= r < rows and 0 <= c < cols): return None
     cost = self.cost + grid[r][c]
     # updated turned to be 1-based to maybe avoid off by ones
-    if turn == 0: turned = self.turned + 1
-    else: turned = 1
-    return Path(r, c, d, cost, turned, self.hist, self.ultra)  #type: ignore
+    return Path(r, c, d, cost, 1 if turn else self.turned + 1, self.hist, self.ultra)  #type: ignore
 
   # yapf: disable
   @property
@@ -79,9 +77,9 @@ class Path():
   # yapf: enable
 
 
-def draw_grid(grid: list[list[Any]]):
+def draw_grid(grid: list[list[str]]):
   for r in range(rows):
-    print(f'{r:3d}:', ''.join(str(x) for x in grid[r]))
+    print(f'{r:3d}:', ''.join(grid[r]))
 
 
 def solve(ultra: bool = False):
@@ -109,7 +107,8 @@ def solve(ultra: bool = False):
       # we can also discard on == tile_cost since we're including direction and (moves since) turn in the costs dict, any earlier higher cost paths will get pruned on paths.get()
       if next_path.rcdt in tile_costs and tile_costs[next_path.rcdt] <= next_path.cost: continue
       tile_costs[next_path.rcdt] = next_path.cost
-      if next_path.rc == end and path.can_turn:
+      if next_path.rc == end and next_path.can_turn:
+        print(f'end: {next_path=}')
         if best_path is None or best_path.cost > next_path.cost:
           best_path, best_cost = next_path, next_path.cost
           if DEBUG > 0: print(f'{best_path.cost=} {paths.qsize()=:,}')
@@ -117,10 +116,10 @@ def solve(ultra: bool = False):
       paths.put(next_path)
   assert best_path
   if DEBUG > 0:
-    grid_copy = [[y for y in x] for x in grid]
-    for r, c in best_path.hist:
+    grid_copy = [[str(y) for y in x] for x in grid]
+    for r, c, d in best_path.hist:
       item = grid_copy[r][c]
-      grid_copy[r][c] = f'\x1b[1;31m{item}\x1b[0m'  #type: ignore
+      grid_copy[r][c] = f'\x1b[7;{31+d}m{item}\x1b[0m'
     draw_grid(grid_copy)
 
   return best_path.cost
