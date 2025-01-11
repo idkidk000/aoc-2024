@@ -2,7 +2,7 @@
 import sys
 from functools import cache
 from dataclasses import dataclass
-from collections import deque
+from collections import deque, defaultdict
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -34,7 +34,7 @@ with open(FILENAME, 'r') as f:
       y[2][2:-1],
     ) for x in f.read().splitlines() if len(y := x.split()) == 3
   ]
-#yapf: enable
+# yapf: enable
 
 
 def draw_grid(grid: list[list[str]]):
@@ -46,7 +46,7 @@ def draw_grid(grid: list[list[str]]):
   print(f'{rows=} {cols=}')
 
 
-def part1():
+def solve(moves: list[Move]):
   #this is all VERY inneficient for now
 
   # loop over moves, add coords to a set
@@ -116,11 +116,87 @@ def part1():
   total = 0
   for row in grid:
     total += len([x for x in row if x == '#'])
-  print(f'part 1: {total=}')
+  return total
+
+
+def solve2(moves: list[Move]):
+  # key is r/c, val is set of start/end r/c. still might not be the right structure
+  h_edges: defaultdict[int, set[tuple[int, int]]] = defaultdict(lambda: set())
+  v_edges: defaultdict[int, set[tuple[int, int]]] = defaultdict(lambda: set())
+  rs, cs = 0, 0
+  r_min = r_max = c_min = c_max = 0
+  for move in moves:
+    re, ce = rs + D4[move.dir][0] * move.len, cs + D4[move.dir][1] * move.len
+    if DEBUG > 2:
+      print(f'{rs=} {cs=} {re=} {ce=} {move.dir=} {move.len=}')
+    match move.dir % 2:
+      case 0:
+        assert cs == ce
+        v_edges[cs].add((min(rs, re), max(rs, re)))
+      case 1:
+        assert rs == re
+        h_edges[rs].add((min(cs, ce), max(cs, ce)))
+    r_min, r_max = min(r_min, re), max(r_max, re)
+    c_min, c_max = min(c_min, ce), max(c_max, ce)
+    rs, cs = re, ce
+
+  if DEBUG > 1:
+    print(f'{dict(h_edges)=}')
+    print(f'{dict(v_edges)=}')
+    print(f'{r_min=:,} {r_max=:,} {c_min=:,} {c_max=:,}')
+
+  total = 0
+  # can i just sort the edges, intersect them, toogle a bool on each intersection, and add the area between this intersection and the last to total??
+
+  #FIXME: bad var names
+
+  #BUG: this does not give rectangular intersection regions
+  # stepping over 2 hedges and vedges at a time might do it
+  # or maybe i should make sets of all row and col numbers where an edge terminates, sort,and grid scan them. or maybe stepping two at a time does the same thing
+  # also, would  two overlapping edges of the same orientation break things? 0-width would be fine i think but width of 1 would mean double-count
+  # could sum interior with 0-width edges and sum the perimeter separately. but perimeter would still be prone to the same double-counting
+  # maybe perim could be summed with a double loop and only count the parts which don't overlap to the bottom/right
+  for r, hedges in sorted(h_edges.items(), key=lambda x: x[0]):
+    for hedge in sorted(hedges):
+      internal = False
+      prev_intersect = (r_min, c_min)
+      for c, vedges in sorted(v_edges.items(), key=lambda x: x[0]):
+        for vedge in sorted(vedges):
+          # continue on no intersection
+          if vedge[0] > r or vedge[1] < r: continue
+          if hedge[0] > c or hedge[1] < c: continue
+
+          intersect = (r, c)
+          # i think this is right?
+          area = (abs(intersect[0] - prev_intersect[0]) + 1) * (abs(intersect[1] - prev_intersect[1]) + 1)
+
+          print(f'{r=} {hedge=}\n{c=} {vedge=}\n  {intersect=}\n  {prev_intersect=}\n  {internal=} {area=}')
+
+          if internal: total += area
+          internal ^= True
+          prev_intersect = intersect
+  if DEBUG > 0: print(f'{total=:,}')
+  # if FILENAME == 'example.txt': assert total == 952_408_144_115
+  return total
+
+
+def part1():
+  result = solve(moves)
+  print(f'part 1: {result}')
+  result2 = solve2(moves)
+  print(f'part 1  v2: {result2}')
+  # 36725
 
 
 def part2():
-  ...
+  # who could have predicted that part2 would require your solve to be efficient
+  ugh = [Move(
+    (int(m.lbl[-1]) + 1) % 4,
+    int(m.lbl[:5], 16),
+    m.lbl,
+  ) for m in moves]
+  result = solve2(ugh)
+  print(f'part 2: {result}')
 
 
 if PART1: part1()
