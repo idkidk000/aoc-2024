@@ -30,7 +30,7 @@ rows, cols = len(grid), len(grid[0])
 
 # yapf: disable
 class Path():
-  r: int; c: int; d: int; cost: int; streak: int; ultra: bool; hist: set[tuple[int,int,int]]; min_streak: int; max_streak: int
+  r: int; c: int; d: int; cost: int; streak: int; ultra: bool; hist: set[tuple[int,int,int,int]]; min_streak: int; max_streak: int
   # yapf: enable
 
   def __init__(
@@ -40,7 +40,7 @@ class Path():
     d: int,
     cost: int = 0,
     streak: int = 0,  # the initial placement isn't a move
-    hist: set[tuple[int, int, int]] = set(),
+    hist: set[tuple[int, int, int, int]] = set(),
     min_streak: int = 999,
     max_streak: int = 0,
     ultra: bool = False
@@ -49,7 +49,7 @@ class Path():
     self.cost, self.streak, self.ultra = cost, streak, ultra
     self.min_streak, self.max_streak = min_streak, max_streak
     self.hist = {*hist}
-    if DEBUG > 0: self.hist.add((r, c, d))
+    if DEBUG > 0: self.hist.add((r, c, d, streak))
 
   def move(self, turn: int) -> Self | None:
     if turn == 0 and self.must_turn: return None
@@ -67,7 +67,8 @@ class Path():
 
   # yapf: disable
   @property
-  def can_turn(self) -> bool: return self.streak >= 4 or not self.ultra
+  #BUG was here: ultra was not allowed to turn in first move. added or cost==0. clown emoji
+  def can_turn(self) -> bool: return self.streak >= 4 or not self.ultra or self.cost==0
 
   @property
   def must_turn(self) -> bool: return self.streak >= (10 if self.ultra else 3)
@@ -125,12 +126,11 @@ def solve(ultra: bool = False):
   if DEBUG > 0:
     grid_copy = [[str(y) for y in x] for x in grid]
     cost_validate=0
-    for r, c, d in best_path.hist:
-      # this is bug prone actually since a path could maybe go over the same tile in the same direction twice
+    for r, c, d, s in best_path.hist:
+      # this is bug prone actually since a path *could* maybe go over the same tile in the same direction twice
       if (r,c)!=(start[0],start[1]):
         cost_validate+=grid[r][c]
-      item = grid_copy[r][c]
-      grid_copy[r][c] = f'\x1b[7;{31+d}m{item}\x1b[0m'
+      grid_copy[r][c] = f'\x1b[7;{31+d}m{s%10}\x1b[0m'
     draw_grid(grid_copy)
     print(f'{cost_validate=} {path.min_streak=} {path.max_streak=}')
 
@@ -146,7 +146,7 @@ def part1():
 def part2():
   result = solve(True)
   print(f'part 2: {result}')
-  #1029 too high
+  #1027
 
 
 if PART1: part1()
