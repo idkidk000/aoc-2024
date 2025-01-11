@@ -120,63 +120,42 @@ def solve(moves: list[Move]):
 
 
 def solve2(moves: list[Move]):
-  # key is r/c, val is set of start/end r/c. still might not be the right structure
-  h_edges: defaultdict[int, set[tuple[int, int]]] = defaultdict(lambda: set())
-  v_edges: defaultdict[int, set[tuple[int, int]]] = defaultdict(lambda: set())
-  rs, cs = 0, 0
-  r_min = r_max = c_min = c_max = 0
+  # i cheated and watched https://www.youtube.com/watch?v=bGWK76_e-LM until she named the algos i needed to look up
+  # my earlier implementation was getting the "area+~1/2 perim" value from looping over r0,1 in unique rows, finding the v edge intersections, adding the area of the rect if internal, toggling internal. but i couldn't come up with a way to get only the internal area
+
+  points = [(0, 0)]
+  r, c = points[0]
+  perimeter = 0
   for move in moves:
-    re, ce = rs + D4[move.dir][0] * move.len, cs + D4[move.dir][1] * move.len
-    if DEBUG > 2:
-      print(f'{rs=} {cs=} {re=} {ce=} {move.dir=} {move.len=}')
-    match move.dir % 2:
-      case 0:
-        assert cs == ce
-        v_edges[cs].add((min(rs, re), max(rs, re)))
-      case 1:
-        assert rs == re
-        h_edges[rs].add((min(cs, ce), max(cs, ce)))
-    r_min, r_max = min(r_min, re), max(r_max, re)
-    c_min, c_max = min(c_min, ce), max(c_max, ce)
-    rs, cs = re, ce
+    # this is fine since the input does not have any path intersections
+    perimeter += move.len
+    r, c = r + D4[move.dir][0] * move.len, c + D4[move.dir][1] * move.len
+    points.append((r, c))
 
-  if DEBUG > 1:
-    print(f'{dict(h_edges)=}')
-    print(f'{dict(v_edges)=}')
-    print(f'{r_min=:,} {r_max=:,} {c_min=:,} {c_max=:,}')
+  # shoelace formula: https://en.wikipedia.org/wiki/Shoelace_formula
+  #   area of a polygon from vertices
+  #   i have no idea why
+  #     | 1 3 |
+  #     | 6 1 |
+  #   means 1*1-3*6
+  # but here's a shitty implementation
+  # yapf: you are a nuisance
+  area = abs(sum( \
+    p0[0] * p1[1] - p0[1] * p1[0] \
+    for p0, p1 in zip(points, points[1:] + points[:1]) \
+  )) // 2
 
-  total = 0
-  # can i just sort the edges, intersect them, toogle a bool on each intersection, and add the area between this intersection and the last to total??
+  # anyhoo, area now includes ~1/2 the perimeter because our tiles have a width. so we need to remove it and add the complete perimeter
 
-  #FIXME: bad var names
+  # picks theorem: https://en.wikipedia.org/wiki/Pick%27s_theorem
+  #   area from internal area and perimeter
+  #   area = internal_area + perimeter/2 - 1
+  #   interior points = internal area. external points = perimeter
+  # can be refactored to:
+  internal_area = area - perimeter // 2 + 1
 
-  #BUG: this does not give rectangular intersection regions
-  # stepping over 2 hedges and vedges at a time might do it
-  # or maybe i should make sets of all row and col numbers where an edge terminates, sort,and grid scan them. or maybe stepping two at a time does the same thing
-  # also, would  two overlapping edges of the same orientation break things? 0-width would be fine i think but width of 1 would mean double-count
-  # could sum interior with 0-width edges and sum the perimeter separately. but perimeter would still be prone to the same double-counting
-  # maybe perim could be summed with a double loop and only count the parts which don't overlap to the bottom/right
-  for r, hedges in sorted(h_edges.items(), key=lambda x: x[0]):
-    for hedge in sorted(hedges):
-      internal = False
-      prev_intersect = (r_min, c_min)
-      for c, vedges in sorted(v_edges.items(), key=lambda x: x[0]):
-        for vedge in sorted(vedges):
-          # continue on no intersection
-          if vedge[0] > r or vedge[1] < r: continue
-          if hedge[0] > c or hedge[1] < c: continue
-
-          intersect = (r, c)
-          # i think this is right?
-          area = (abs(intersect[0] - prev_intersect[0]) + 1) * (abs(intersect[1] - prev_intersect[1]) + 1)
-
-          print(f'{r=} {hedge=}\n{c=} {vedge=}\n  {intersect=}\n  {prev_intersect=}\n  {internal=} {area=}')
-
-          if internal: total += area
-          internal ^= True
-          prev_intersect = intersect
-  if DEBUG > 0: print(f'{total=:,}')
-  # if FILENAME == 'example.txt': assert total == 952_408_144_115
+  total = perimeter + internal_area
+  if DEBUG > 0: print(f'{perimeter=} {area=} {internal_area=} {total=}')
   return total
 
 
@@ -184,7 +163,7 @@ def part1():
   result = solve(moves)
   print(f'part 1: {result}')
   result2 = solve2(moves)
-  print(f'part 1  v2: {result2}')
+  print(f'part 1 v2: {result2}')
   # 36725
 
 
