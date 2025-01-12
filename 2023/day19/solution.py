@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# type: ignore
-# FIXME: dump the tuples, reenable mypy
-
 import sys
 import re
 
@@ -25,66 +22,63 @@ for arg in sys.argv[1:]:
 WORKFLOWS_RE = re.compile(r'^([a-z]+)\{(.+)\}$', re.MULTILINE)
 RULES_RE = re.compile(r'(?:([xmas])([<>])([0-9+]+):)?(R|A|[a-z]+),?')
 PARTS_RE = re.compile(r'^\{x=([0-9]+),m=([0-9]+),a=([0-9]+),s=([0-9]+)\}$', re.MULTILINE)
+
 with open(FILENAME, 'r') as f:
   sections = f.read().split('\n\n')
 workflows = {
   w.group(1): [
-    (
-      (
-        {'x': 0, 'm': 1, 'a': 2, 's': 3}[r.group(1)],
-        r.group(2),
-        int(r.group(3)),
-      ) if r.group(1) else (),
-      r.group(4),
-    )
+    {
+      'condition': {
+        'prop': r.group(1),
+        'comp': r.group(2),
+        'value': int(r.group(3)),
+      } if r.group(1) else None,
+      'dest': r.group(4),
+    }
     for r in re.finditer(RULES_RE, w.group(2))
   ]
   for w in re.finditer(WORKFLOWS_RE, sections[0])
 }
 #yapf: enable
-# tuple so it can be memoised
 parts = [
-  (
-    int(p.group(1)),
-    int(p.group(2)),
-    int(p.group(3)),
-    int(p.group(4)),
-  ) for p in re.finditer(PARTS_RE, sections[1])
+  {
+    'x': int(p.group(1)),
+    'm': int(p.group(2)),
+    'a': int(p.group(3)),
+    's': int(p.group(4)),
+  } for p in re.finditer(PARTS_RE, sections[1])
 ]
 
-# if DEBUG > 1:
-#   print(f'{workflows=}')
-#   print(f'{parts=}')
+if DEBUG > 2:
+  print(f'{workflows=}')
+  print(f'{parts=}')
 
 
-def solve(part: tuple[int, int, int, int], workflow_name: str = 'in') -> bool:
+def can_accept(part: dict[str, int], workflow_name: str = 'in') -> bool:
+  if workflow_name == 'A': return True
+  if workflow_name == 'R': return False
   workflow = workflows[workflow_name]
   for rule in workflow:
-    valid = True
-    if rule[0]:
-      prop = part[rule[0][0]]
-      op = rule[0][1]
-      val = rule[0][2]
-      valid = (op == '>' and prop > val) or (op == '<' and prop < val)
-    if valid:
-      res = rule[1]
-      match res:
-        case 'A':
-          return True
-        case 'R':
-          return False
-      return solve(part, res)
-  # mypy pipe down pls
+    condition = rule['condition']
+    dest = rule['dest']
+    assert isinstance(dest, str)
+    if isinstance(condition, dict):
+      prop = part[condition['prop']]
+      comp = condition['comp']
+      value = condition['value']
+      if (comp == '>' and prop > value) or (comp == '<' and prop < value):
+        return can_accept(part, dest)
+    else:
+      return can_accept(part, dest)
   assert False
 
 
-def solve3(subset: list[tuple[int, int]], workflow_name: str = 'in') -> int:
+def count_accepted(subset: dict[str, tuple[int, int]], workflow_name: str = 'in') -> int:
   if DEBUG > 0: print(f'{subset=} {workflow_name=}')
   if workflow_name == 'A':
-    # hopefully the count of possible subset entries
+    # count of possible parts described by subset
     size = 1
-    for part in subset:
-      # off by one clown strikes again
+    for part in subset.values():
       size *= part[1] - part[0] + 1
     if DEBUG > 1: print(f'  accept {size=}')
     return size
@@ -92,49 +86,50 @@ def solve3(subset: list[tuple[int, int]], workflow_name: str = 'in') -> int:
   workflow, count = workflows[workflow_name], 0
   for rule in workflow:
     if DEBUG > 1: print(f'  {rule=}')
-    dest = rule[1]
-    if rule[0]:
-      part_ix = rule[0][0]
-      part_from = subset[part_ix][0]
-      part_to = subset[part_ix][1]
-      op = rule[0][1]
-      val = rule[0][2]
-      #FIXME: might validate that val+-1 is not out of range for partial matches
-      if op == '<' and part_from < val:
+    condition = rule['condition']
+    dest = rule['dest']
+    assert isinstance(dest, str)
+    if isinstance(condition, dict):
+      prop = condition['prop']
+      prop_from = subset[prop][0]
+      prop_to = subset[prop][1]
+      comp = condition['comp']
+      value = condition['value']
+      if comp == '<' and prop_from < value:
         # complete match - we can return here
-        if part_to < val: return count + solve3(subset, dest)
+        if prop_to < value: return count + count_accepted(subset, dest)
         else:
           # partial match. pass matched part to dest, remainder to next rule
-          match_subset = [*subset]
-          match_subset[part_ix] = (part_from, val - 1)
-          count += solve3(match_subset, dest)
-          subset[part_ix] = (val, part_to)
-      elif op == '>' and part_to > val:
+          match_subset = subset | {prop: (prop_from, value - 1)}
+          count += count_accepted(match_subset, dest)
+          subset[prop] = (value, prop_to)
+      elif comp == '>' and prop_to > value:
         # complete match - we can return here
-        if part_from > val: return count + solve3(subset, dest)
+        if prop_from > value: return count + count_accepted(subset, dest)
         else:
           # partial match. pass matched part to dest, remainder to next rule
-          match_subset = [*subset]
-          match_subset[part_ix] = (val + 1, part_to)
-          count += solve3(match_subset, dest)
-          subset[part_ix] = (part_from, val)
+          match_subset = subset | {prop: (value + 1, prop_to)}
+          count += count_accepted(match_subset, dest)
+          subset[prop] = (prop_from, value)
       # else next rule
     else:
       # conditionless is the last rule so we can return here
-      return count + solve3(subset, dest)
+      return count + count_accepted(subset, dest)
   assert False
 
 
 def part1():
   total = 0
   for part in parts:
-    if solve(part):
-      total += part[0] + part[1] + part[2] + part[3]
-  print(f'part 1: {total=}')
+    if can_accept(part):
+      total += part['x'] + part['m'] + part['a'] + part['s']
+  print(f'part 1: {total}')
+  # 418498
 
 
 def part2():
-  result = solve3([(1, 4000)] * 4)
+  # yapf: disable
+  result = count_accepted({x: (1, 4000) for x in ['x', 'm', 'a', 's']})
   print(f'part 2: {result}')
   # 123331556462603
 
