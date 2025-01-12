@@ -24,7 +24,7 @@ for arg in sys.argv[1:]:
 FLIP_FLOP = '%'
 CONJUNCTION = '&'
 LOW, HIGH = False, True
-MODULE_RE = re.compile(f'^([{FLIP_FLOP}{CONJUNCTION}])?([a-z]+) -> ([a-z, ]+)$', re.MULTILINE)
+MODULE_RE = re.compile(rf'^([{FLIP_FLOP}{CONJUNCTION}])?([a-z]+) -> ([a-z, ]+)$', re.MULTILINE)
 with open(FILENAME, 'r') as f:
   modules = {
     match.group(2): {
@@ -39,14 +39,7 @@ if DEBUG > 2:
 
 
 def part1():
-  ...
-  # execution order is breadth first
-  # solve function should accept a state dict containing module names and high/low/floating state
-  # next_state={**state}, change the module states
-  # loop over state dict where state val!=floating and update next_state
-  # call solve with next_state
-  # needs inputs and states dicts
-
+  # initial states
   flip_flops = {k: LOW for k, v in modules.items() if v['type'] == FLIP_FLOP}
   conjunctions = {
     k: {
@@ -67,19 +60,19 @@ def part1():
       print(f'{conjunctions=}')
   count_low, count_high = 0, 0
   for i in range(1000):
-    inputs = {('button', 'broadcaster'): LOW}
+    # refactored as list because apparently you can have multiple inputs with the same sender and receiver?
+    inputs = [('button', 'broadcaster', LOW)]
     while inputs:
-      count_low += len([x for x in inputs.values() if x == LOW])
-      count_high += len([x for x in inputs.values() if x == HIGH])
-      next_inputs: dict[tuple[str, str], bool] = {}
-      for (sender, receiver), state in inputs.items():
+      count_low += len([x for x in inputs if x[2] == LOW])
+      count_high += len([x for x in inputs if x[2] == HIGH])
+      next_inputs: list[tuple[str, str, bool]] = []
+      for sender, receiver, state in inputs:
         # should use an enum but they're pretty annoying
         if DEBUG > 0: print(f'''{i=} {sender} -> {receiver}: {'HIGH' if state else 'LOW'}''')
-        #BUG maybe: i have an output to rx which isn't in modules. i assume we count the pulses and do nothing with them
         if receiver not in modules.keys(): continue
         module = modules[receiver]
         assert isinstance(module['targets'], list)  #should probably migrate to classes
-        # match case treats % as a sql-like glob pattern. so i suppose i won't use it with strs anymore
+        # match case treats % as a sql-like glob pattern
         if module['type'] == FLIP_FLOP:
           if state == LOW:
             prev_state = flip_flops[receiver]
@@ -87,7 +80,7 @@ def part1():
             flip_flops[receiver] = next_state  # flip state and pass new state to targets
             if DEBUG > 1:
               print(f'''  flipflop {'HIGH' if prev_state else 'LOW'} -> {'HIGH' if next_state else 'LOW'}''')
-            next_inputs |= {(receiver, x): flip_flops[receiver] for x in module['targets']}
+            next_inputs.extend([(receiver, x, flip_flops[receiver]) for x in module['targets']])
           elif DEBUG > 1:
             print('  ignore HIGH')
         elif module['type'] == CONJUNCTION:
@@ -100,15 +93,14 @@ def part1():
           conjunctions[receiver][sender] = state
           next_state = LOW if all(x == HIGH for x in conjunctions[receiver].values()) else HIGH
           if DEBUG > 1: print(f'''  conjunction: {'HIGH' if next_state else 'LOW'}''')
-          next_inputs |= {(receiver, x): next_state for x in module['targets']}
+          next_inputs.extend([(receiver, x, next_state) for x in module['targets']])
         else:
           # pass the state directly to targets
-          next_inputs |= {(receiver, x): state for x in module['targets']}
+          next_inputs.extend([(receiver, x, state) for x in module['targets']])
       inputs = next_inputs
   product = count_low * count_high
   print(f'part 1: {count_low=} {count_high=} {product=}')
-
-  # 809254724 too low
+  # 883726240
 
 
 def part2():
