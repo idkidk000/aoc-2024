@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys
 import re
-import json
-from collections import defaultdict
+from collections import deque
+from typing import Self
+from math import lcm  #actually it's called "maths", sweetie
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -20,128 +21,159 @@ for arg in sys.argv[1:]:
       case '-p2': PART1, PART2 = False, True
       case '-p0': PART1, PART2 = False, False
       case _: raise Exception(f'unknown {arg=}')
+
+class State(): # ugh. but enums are worse
+  LOW = False
+  HIGH = True
+  def __init__(self, val: bool|Self=False): self._val = bool(val)
+  def flip(self): self._val ^= True; return self
+  def set(self,val:bool): self._val=bool(val); return self
+  def set_low(self): self._val=False; return self
+  def set_high(self): self._val=True; return self
+  def __bool__(self): return self._val
+  def __str__(self): return 'HIGH' if self._val else 'LOW'
+  def __repr__(self): return f'{self.__class__.__name__}.{self.__str__()}'
+  def __eq__(self,other:Self|bool): return self._val==bool(other) #type: ignore
+  def copy(self): return State(self._val)
+
+class Module():
+  FLIP_FLOP = '%'
+  CONJUNCTION = '&'
+  _types = {
+    FLIP_FLOP: 'flip flop',
+    CONJUNCTION: 'conjunction',
+  }
+  def __init__(self, name: str, type: str, targets: str):
+    self._name = name
+    self._type = type
+    self._targets = tuple(targets.split(', '))
+    self._state = State()
+    self._inputs: dict[str, State] = {}
+  def set_input(self, input: str, state: State):
+    # only valid on conjunctions but i cba writing a base and subclasses
+    self._inputs[input] = state
+    if all(self._inputs.values()): self.state.set_low()
+    else: self.state.set_high()
+  @property # should be a frozendict really
+  def inputs(self): return self._inputs
+  @property
+  def typename(self): return self._types.get(self._type, 'module')
+  @property
+  def name(self): return self._name
+  @property
+  def type(self): return self._type
+  @property
+  def targets(self): return self._targets
+  @property
+  def state(self): return self._state
+  def __repr__(self): return f'<Module type={self.typename} targets={self.targets} inputs={self._inputs} state={self.state}>'
 #yapf: enable
 
-FLIP_FLOP = '%'
-CONJUNCTION = '&'
-LOW, HIGH = False, True
-MODULE_RE = re.compile(rf'^([{FLIP_FLOP}{CONJUNCTION}])?([a-z]+) -> ([a-z, ]+)$', re.MULTILINE)
+MODULE_RE = re.compile(r'^([%&])?([a-z]+) -> ([a-z, ]+)$', re.MULTILINE)
 with open(FILENAME, 'r') as f:
   modules = {
-    match.group(2): {
-      'type': match.group(1) or None,
-      'targets': match.group(3).replace(',', ' ').split()
-    }
+    match.group(2): Module(
+      match.group(2),
+      match.group(1),
+      match.group(3),
+    )
     for match in MODULE_RE.finditer(f.read())
   }
-if DEBUG > 2:
-  if DEBUG > 3: print(json.dumps(modules, indent=2))
-  else: print(f'{modules=}')
 
 
 def solve(iterations=1000, rx_trap=False):
-  # initial states
-  flip_flops = {k: LOW for k, v in modules.items() if v['type'] == FLIP_FLOP}
-  conjunctions = {
-    k: {
-      kk: LOW
-      for kk, vv in modules.items()
-      if k in vv['targets']  #type: ignore
-    }
-    for k, v in modules.items()
-    if v['type'] == CONJUNCTION
-  }
+  # reset initial states
+  for module in modules.values():
+    if module.type == Module.FLIP_FLOP: module.state.set_low()
+    elif module.type == Module.CONJUNCTION:
+      for input in modules.values():
+        if module.name in input.targets:
+          module.set_input(input.name, State())
+
   if DEBUG > 2:
-    if DEBUG > 3:
-      print(json.dumps(flip_flops, indent=2))
-      print(json.dumps(conjunctions, indent=2))
-      exit()
-    else:
-      print(f'{flip_flops=}')
-      print(f'{conjunctions=}')
-  # # yapf: disable
-  # rx_conjunction = [k for k, v in modules.items() if v['type'] == CONJUNCTION and 'rx' in v['targets']][0]  #type: ignore
-  # # lol these are also conjunctions. may need to go a level deeper
-  # # yep none of them went high after 100k cycles
-  # # rx_conjuncion_drivers: dict[str, dict[int, bool]] = {k: {} for k, v in modules.items() if rx_conjunction in v['targets']} #type: ignore
-  # rx_l1=[k for k,v in modules.items() if rx_conjunction in v['targets']] #type: ignore
-  # rx_l2:dict[str,list[tuple[int,bool]]]={k:[] for k,v in modules.items() if any(x in v['targets'] for x in rx_l1)} #type: ignore
-  # rx_l3:dict[str,list[tuple[int,bool]]]={k:[] for k,v in modules.items() if any(x in v['targets'] for x in rx_l2.keys())} #type: ignore
-  # yapf: enable
-  rx_traces:dict[str,list[tuple[int,bool]]]=defaultdict(list)
+    print(f'{modules=}')
+
+  # rx has only one input
+  rx_driver = [x.name for x in modules.values() if 'rx' in x.targets][0]
+  # l1 didn't go low after 100k button presses
+  rx_l1 = {x.name for x in modules.values() if rx_driver in x.targets}
+  # so lets try l2. set because there might be many pulses per button press
+  rx_traces: dict[str, set[int]] = {x.name: set() for x in modules.values() if any(y in x.targets for y in rx_l1)}
+  rx_trace_state = State.LOW
 
   count_low, count_high = 0, 0
+  plsbreak = False
   for i in range(iterations):
-    # refactored as list because apparently all the modules can process multiple inputs per cycle so using (sender,receiver) as dict key was breaking things
-    inputs = [('button', 'broadcaster', LOW)]
+    inputs = deque([('button', 'broadcaster', State())])
     while inputs:
-      count_low += len([x for x in inputs if x[2] == LOW])
-      count_high += len([x for x in inputs if x[2] == HIGH])
-      next_inputs: list[tuple[str, str, bool]] = []
-      for sender, receiver, state in inputs:
-        # should use an enum but they're pretty annoying
-        if DEBUG > 0: print(f'''{i=} {sender} -> {receiver}: {'HIGH' if state else 'LOW'}''')
-        # if rx_trap and receiver == 'rx':
-        #   print(f'{i=} {receiver=} {state=}')
-        #   # presumably this goes low every 10 trillion cycles and i'll need to look at what drives it and find the patterns in their cycles and do lcm. but lets pretend that's not true for now :)
-        #   if state == LOW: return i + 1
-        if rx_trap:
-          #BUG: this also needs to track the cycle num within each button press loop. in fact we might need to track the conjunctions and flip_flops dicts
-          rx_traces[sender].append((i, state))
-        if receiver not in modules.keys(): continue
-        module = modules[receiver]
-        assert isinstance(module['targets'], list)  #should probably migrate to classes
-        # match case treats % as a sql-like glob pattern
-        if module['type'] == FLIP_FLOP:
-          if state == LOW:
-            prev_state = flip_flops[receiver]
-            next_state = prev_state ^ True
-            flip_flops[receiver] = next_state  # flip state and pass new state to targets
-            if DEBUG > 1:
-              print(f'''  flipflop {'HIGH' if prev_state else 'LOW'} -> {'HIGH' if next_state else 'LOW'}''')
-            next_inputs.extend([(receiver, x, flip_flops[receiver]) for x in module['targets']])
-          elif DEBUG > 1:
-            print('  ignore HIGH')
-        elif module['type'] == CONJUNCTION:
-          # update r/s state and determine state to pass to targets
-          if DEBUG > 1:
-            print('  prev inputs:')
-            for k, v in conjunctions[receiver].items():
-              print(f'''    {k}: {'HIGH' if v else 'LOW'}''')
-            print(f'''  update input {sender} to {'HIGH' if state else 'LOW'}''')
-          conjunctions[receiver][sender] = state
-          next_state = LOW if all(x == HIGH for x in conjunctions[receiver].values()) else HIGH
-          if DEBUG > 1: print(f'''  conjunction: {'HIGH' if next_state else 'LOW'}''')
-          next_inputs.extend([(receiver, x, next_state) for x in module['targets']])
-        else:
-          # pass the state directly to targets
-          next_inputs.extend([(receiver, x, state) for x in module['targets']])
-      inputs = next_inputs
-  product = count_low * count_high
+      sender_name, receiver_name, state = inputs.popleft()
+      if state == State.HIGH: count_high += 1
+      elif state == State.LOW: count_low += 1
+      else: assert False, f'{state=}'
+      receiver = modules.get(receiver_name)
+      sender = modules.get(sender_name)
+      if DEBUG > 1: print(f'{i=} {sender_name} -> {receiver_name} ({receiver.typename if receiver else None}): {state}')
+      if rx_trap and sender_name in rx_traces.keys() and state == rx_trace_state:
+        # this is a bit backwards since we're adding the trace when the pulse is received, not when it's sent. but all pulses must be resolved before next i so maybe it's fine
+        rx_traces[sender_name].add(i)
+        if DEBUG > 0:
+          print('traces:')
+          for k, v in rx_traces.items():
+            print(f'  {k=} {len(v)=} {sorted(v)[:5]=}')
+        if all(len(x) >= 5 for x in rx_traces.values()):
+          plsbreak = True
+          break
+      if receiver is None: continue
+      # match case treats % as a sql-like glob pattern
+      if receiver.type == Module.FLIP_FLOP:
+        if state == State.LOW:
+          # flip state and pass new state to targets
+          prev_state = receiver.state.copy()
+          receiver.state.flip()
+          if DEBUG > 2:
+            print(f'  {receiver.typename} {prev_state} -> {receiver.state}')
+          for x in receiver.targets:
+            inputs.append((receiver_name, x, receiver.state.copy()))
+        elif DEBUG > 2:
+          print(f'  ignore {state}')
+      elif receiver.type == Module.CONJUNCTION:
+        # update inputs. class determines new state. new state to targets
+        if DEBUG > 2:
+          print('  prev inputs:')
+          for k, v in receiver.inputs.items():
+            print(f'    {k}: {v}')
+          print(f'  update input {sender_name} to {state}')
+        prev_state = receiver.state.copy()
+        receiver.set_input(sender_name, state)
+        if DEBUG > 2: print(f'  {receiver.typename}: {prev_state} -> {receiver.state}')
+        for x in receiver.targets:
+          inputs.append((receiver_name, x, receiver.state.copy()))
+      else:
+        # pass the state directly to targets
+        for x in receiver.targets:
+          inputs.append((receiver_name, x, state.copy()))
+    if plsbreak: break
+
   if not rx_trap:
+    product = count_low * count_high
     if DEBUG > 0: print(f'{count_low=} {count_high=} {product=}')
     return product
 
-  cycles:dict[str,dict[str,int]]={}
-  for driver, values in rx_traces.items():
-    trues = sorted({i for i, s in values if s})
-    true_deltas = [y - x for x, y in zip(trues, trues[1:])]
-    falses = sorted({i for i, s in values if not s})
-    false_deltas = [y - x for x, y in zip(falses, falses[1:])]
-    # print(f'{driver=} {len(values)=} {trues[:4]=} {falses[:4]=}')
-    print(f'{driver=} {len(values)=} {true_deltas[:4]=} {false_deltas[:4]=}')
-    # drivers with irregular deltas will need to be simulated from their own drivers
-    # but i think there isn't enough data here yet - we need to know all of the states at each execution cycle for each button press cycle
-    if len({*true_deltas})!=1 or len({*false_deltas})!=1: continue
-    cycles[driver]={
-      'low_start':falses[0],
-      'low_interval':false_deltas[0],
-      'high_start':trues[0],
-      'high_interval':true_deltas[0],
-    }
-
-  print(f'{cycles=}')
-  return 0
+  deltas: set[int] = set()
+  for k, v in rx_traces.items():
+    sv = sorted(v)
+    if DEBUG > 0: print(f'''{k=} {sv=}''')
+    item_deltas = {y - x for x, y in zip(sv, sv[1:])}
+    offset = sv[0]
+    if DEBUG > 0: print(f'  {item_deltas=} {offset=}')
+    assert len(item_deltas) == 1
+    delta = item_deltas.pop()
+    # thankfully the aoc people have been kind and the offsets are all delta-1. so we can just lcm. the -1 is because we start at ix 0 so can be ignored
+    assert delta == offset + 1
+    deltas.add(delta)
+  cycle = lcm(*deltas)
+  if DEBUG > 0: print(f'{deltas=} {cycle=}')
+  return cycle
 
 
 def part1():
@@ -151,10 +183,12 @@ def part1():
 
 
 def part2():
-  # need to go a bit higher to make sure we have enough values to validate consistent deltas for all the drivers
+  # give it a silly number of iterations. we shouldn't hit that unless something's gone very wrong (foreshadowing)
   result = solve(100_000, True)
-  print(f'part 2: {result=}')
+  print(f'part 2: {result}')
+  # 211712400442661
 
 
+if PART1 == PART2 == False: solve(5)
 if PART1: part1()
 if PART2: part2()
