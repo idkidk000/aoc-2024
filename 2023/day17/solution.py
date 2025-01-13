@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import sys
 from typing import Self
-from queue import PriorityQueue
+# replaced PriorityQueue (threadsafe, slow af) with heapq
+from heapq import heappush, heappop
 
 sys.setrecursionlimit(1_000_000)
 DEBUG = 0
@@ -59,10 +60,10 @@ class Path():
     if not (0 <= r < rows and 0 <= c < cols): return None
     cost = self.cost + grid[r][c]
     # updated streak to be 1-based to maybe avoid off by ones
-    streak=1 if turn else self.streak + 1
+    streak = 1 if turn else self.streak + 1
     # validation
-    min_streak=min(self.streak,self.min_streak) if turn else self.min_streak
-    max_streak=max(self.streak,self.max_streak) if turn else self.max_streak
+    min_streak = min(self.streak, self.min_streak) if turn else self.min_streak
+    max_streak = max(self.streak, self.max_streak) if turn else self.max_streak
     return Path(r, c, d, cost, streak, self.hist, min_streak, max_streak, self.ultra)  #type: ignore
 
   # yapf: disable
@@ -96,17 +97,17 @@ def solve(ultra: bool = False):
   path = Path(*start, ultra=ultra)
   # row, col, dir, (moves since) streak. for path pruning
   tile_costs: dict[tuple[int, int, int, int], int] = {path.rcdt: 0}
-  # PriorityQueue sorts items on put. so Path has a __lt__ method based on cost, which is way better than trying to pushleft and push to a deque
-  paths: PriorityQueue[Path] = PriorityQueue()
-  paths.put(path)
+  # heapq sorts lowest first (paths has an __lt__)
+  paths: list[Path] = []
+  heappush(paths, path)
   best_path = best_cost = prev_cost = None
-  while paths.qsize():
-    path = paths.get()
+  while paths:
+    path = heappop(paths)
     # logic is in the Path class. this is mostly pruning and debugging
     if best_cost and best_cost < path.cost: continue
     if path.cost > tile_costs[path.rcdt]: continue
     if DEBUG > 1 and path.cost != prev_cost:
-      print(f'{path=} {paths.qsize()=}')
+      print(f'{path=} {len(paths)=}')
       prev_cost = path.cost
     # try all possible turns. invalid will return None
     for t in [-1, 0, 1]:
@@ -119,9 +120,9 @@ def solve(ultra: bool = False):
         print(f'end: {next_path=}')
         if best_path is None or best_path.cost > next_path.cost:
           best_path, best_cost = next_path, next_path.cost
-          if DEBUG > 0: print(f'{best_path.cost=} {paths.qsize()=:,}')
+          if DEBUG > 0: print(f'{best_path.cost=} {len(paths)=:,}')
         continue
-      paths.put(next_path)
+      heappush(paths, next_path)
   assert best_path
   if DEBUG > 0:
     grid_copy = [[str(y) for y in x] for x in grid]
