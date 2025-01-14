@@ -91,158 +91,104 @@ def part1():
 
 
 def part2():
-  # n=26_501_365
   start = find_grid('S')
+  steps = 26_501_365
+  """
+    walk the two variants (high/low fill for boundary, the two oscillating states for internal) of each corner, edge, and fill tile
+    calculate the number of each required, then multiply and sum
+    validated using example2.txt the modified solve function
+  """
 
-  for steps in [26_501_365]:
-    # for steps in range(1,101):
-    orthagonal_steps = steps - 1 - rows // 2
-    diagonal_steps = steps - 1 - rows
+  orthagonal_steps = steps - 1 - rows // 2
+  diagonal_steps = steps - 1 - rows
 
-    # these fall over with example.txt because there isn't a clear column and row from the origin so we don't fill from the expected position or even take the expected number of steps
-    # example2 works though and we have a source of truth to validate against by calling solve with a multiplier
+  # steps<rows (low fill)
+  top_corner_a, _ = solve((rows - 1, start[1]), orthagonal_steps % rows)
+  right_corner_a, _ = solve((start[0], 0), orthagonal_steps % rows)
+  bottom_corner_a, _ = solve((0, start[1]), orthagonal_steps % rows)
+  left_corner_a, _ = solve((start[0], cols - 1), orthagonal_steps % rows)
 
-    # steps<rows (low fill)
-    top_corner_a, _ = solve((rows - 1, start[1]), orthagonal_steps % rows)
-    right_corner_a, _ = solve((start[0], 0), orthagonal_steps % rows)
-    bottom_corner_a, _ = solve((0, start[1]), orthagonal_steps % rows)
-    left_corner_a, _ = solve((start[0], cols - 1), orthagonal_steps % rows)
+  # steps<rows*2 (high fill)
+  top_corner_b, _ = solve((rows - 1, start[1]), orthagonal_steps % rows + rows)
+  right_corner_b, _ = solve((start[0], 0), orthagonal_steps % rows + rows)
+  bottom_corner_b, _ = solve((0, start[1]), orthagonal_steps % rows + rows)
+  left_corner_b, _ = solve((start[0], cols - 1), orthagonal_steps % rows + rows)
 
-    # steps<rows*2 (high fill)
-    top_corner_b, _ = solve((rows - 1, start[1]), orthagonal_steps % rows + rows)
-    right_corner_b, _ = solve((start[0], 0), orthagonal_steps % rows + rows)
-    bottom_corner_b, _ = solve((0, start[1]), orthagonal_steps % rows + rows)
-    left_corner_b, _ = solve((start[0], cols - 1), orthagonal_steps % rows + rows)
+  # refactored a bit which throws off the earlier manual validation. there were previously filled_a and filled_b
+  center, _ = solve(start, min(steps, rows * 2 + steps % 2))
+  filled, _ = solve(start, rows * 2 + steps % 2 + 1)
 
-    # refactored a bit which throws off the earlier manual validation. there were previously filled_a and filled_b
-    center, _ = solve(start, min(steps, rows * 2 + steps % 2))
-    filled, _ = solve(start, rows * 2 + steps % 2 + 1)
+  # steps<rows (low fill)
+  top_right_a, _ = solve((rows - 1, 0), diagonal_steps % rows)
+  bottom_right_a, _ = solve((0, 0), diagonal_steps % rows)
+  bottom_left_a, _ = solve((0, cols - 1), diagonal_steps % rows)
+  top_left_a, _ = solve((rows - 1, cols - 1), diagonal_steps % rows)
 
-    # steps<rows (low fill)
-    top_right_a, _ = solve((rows - 1, 0), diagonal_steps % rows)
-    bottom_right_a, _ = solve((0, 0), diagonal_steps % rows)
-    bottom_left_a, _ = solve((0, cols - 1), diagonal_steps % rows)
-    top_left_a, _ = solve((rows - 1, cols - 1), diagonal_steps % rows)
+  # steps<rows*2 (high fill)
+  top_right_b, _ = solve((rows - 1, 0), diagonal_steps % rows + rows)
+  bottom_right_b, _ = solve((0, 0), diagonal_steps % rows + rows)
+  bottom_left_b, _ = solve((0, cols - 1), diagonal_steps % rows + rows)
+  top_left_b, _ = solve((rows - 1, cols - 1), diagonal_steps % rows + rows)
 
-    # steps<rows*2 (high fill)
-    top_right_b, _ = solve((rows - 1, 0), diagonal_steps % rows + rows)
-    bottom_right_b, _ = solve((0, 0), diagonal_steps % rows + rows)
-    bottom_left_b, _ = solve((0, cols - 1), diagonal_steps % rows + rows)
-    top_left_b, _ = solve((rows - 1, cols - 1), diagonal_steps % rows + rows)
+  total = center
+  print(f'add {center=} {total=}')
+  if steps > rows // 2:
+    # at 6, add corners
+    corners_a = top_corner_a + right_corner_a + bottom_corner_a + left_corner_a
+    total += corners_a
+    print(f'add {corners_a=} {total=}')
+  if steps > rows:
+    # at 12, add 1x edges_a
+    # at 23, add 2x edges_a
+    mult = (steps - 1) // rows
+    edges_a = top_right_a + bottom_right_a + bottom_left_a + top_left_a
+    total += mult * edges_a
+    print(f'add {edges_a=} * {mult=} {total=}')
+  if steps > rows + rows // 2:
+    corners_b = top_corner_b + right_corner_b + bottom_corner_b + left_corner_b
+    total += corners_b
+    print(f'add {corners_b=} {total=}')
+  if steps > rows * 2:
+    # at 23, add edges b
+    # at 34: add 2x edges b
+    mult = ((steps - 1) // rows) - 1
+    edges_b = top_right_b + bottom_right_b + bottom_left_b + top_left_b
+    total += edges_b * mult
+    print(f'add {edges_b=} * {mult=} {total=}')
+  if steps > rows * 2 + rows // 2:
+    # at 23 (rows * 2 + 1):           add 0
+    # at 28 (rows * 2 + rows//2 + 1): add 4
+    # at 45 (rows * 4 + 1):           add 12
+    # at 50 (rows * 4 + rows//2 + 1): add 16
+    # at 67 (rows * 6 + 1):           add 32
+    # at 72 (rows * 6 + rows//2 + 1): add 36
+    # at 89 (rows * 8 + 1):           add 60
+    # at 94 (rows * 8 + rows//2 + 1): add 64
 
-    # validation, _ = solve(start, steps, ((steps + rows // 2) // rows) + 1)
+    # solved in sheets lol
+    mult = 4 * ((steps - 1) // (rows * 2))**2 - 4
+    if (steps - 1) % (rows * 2) >= rows // 2: mult += 4
 
-    print(f'{steps=} {rows=} {cols=} {orthagonal_steps=} {diagonal_steps=}')
-    print(f'{center=} {filled=}')
-    print(f'{top_corner_a=} {right_corner_a=} {bottom_corner_a=} {left_corner_a=}')
-    print(f'{top_corner_b=} {right_corner_b=} {bottom_corner_b=} {left_corner_b=}')
-    print(f'{top_right_a=} {bottom_right_a=} {top_left_a=} {bottom_left_a=}')
-    print(f'{top_right_b=} {bottom_right_b=} {top_left_b=} {bottom_left_b=}')
+    total += filled * mult
+    print(f'add {filled=} * {mult=} {total=}')
+  if steps > rows * 3:
+    # at 34 (rows * 3 + 1 ):          add 4x additional center tiles
+    # at 39 (rows * 3 + rows//2 + 1): add 8
+    # at 56 (rows * 5 + 1):           add 20
+    # at 61 (rows * 5 + rows//2 + 1): add 24
+    # at 78 (rows * 7 + 1):           add 44
+    # at 83 (rows * 7 + rows//2 + 1): add 48
 
-    # example2 steps=10: validation=91  center=47
-    #                                   corners_a=44
-    #                                   47+44=91
-    #          steps=15: validation=194 center=45
-    #                                   corners_a=130
-    #                                   edges_a=19
-    #                                   45+130+19=194
-    #          steps=20: validation=342 center=47
-    #                                   corners_a=35
-    #                                   4xfilled=180
-    #                                   edges_a=80
-    #                                   47+35+180+80=342
-    #          steps=25: validation=519 center=45
-    #                                   corners_a=115
-    #                                   4xfilled_a=188
-    #                                   2*edges a=26
-    #                                   edges_b=145
-    #                                   45+115+188+26+145=519
-    #          steps=35: validation=964 center=45
-    #                                   corners_a=89
-    #                                   8xfilled=360
-    #                                   4xfilled_a=188
-    #                                   3xedges_a=24
-    #                                   2xedges_b=258
-    #                                   45+89+360+188+24+258=964
+    # i only have one l2 delta for the non% pattern but it's 8 again so i assume it's similar to the filled pattern
 
-    # ok just need to figure out how many of each for a given number of steps
+    n = (((steps - 1) // rows) - 1) // 2
+    mult = 4 * (n**2 + n) - 4
+    if (steps - 1 + rows) % (rows * 2) >= rows // 2: mult += 4
 
-    total = center
-    print(f'add {center=} {total=}')
-    if steps > rows // 2:
-      # at 6, add corners
-      corners_a = top_corner_a + right_corner_a + bottom_corner_a + left_corner_a
-      total += corners_a
-      print(f'add {corners_a=} {total=}')
-    if steps > rows:
-      # at 12, add 1x edges_a
-      # at 23, add 2x edges_a
-      mult = (steps - 1) // rows
-      edges_a = top_right_a + bottom_right_a + bottom_left_a + top_left_a
-      total += mult * edges_a
-      print(f'add {edges_a=} * {mult=} {total=}')
-    if steps > rows + rows // 2:
-      corners_b = top_corner_b + right_corner_b + bottom_corner_b + left_corner_b
-      total += corners_b
-      print(f'add {corners_b=} {total=}')
-    if steps > rows * 2:
-      # at 23, add edges b
-      # at 34: add 2x edges b
-      mult = ((steps - 1) // rows) - 1
-      edges_b = top_right_b + bottom_right_b + bottom_left_b + top_left_b
-      total += edges_b * mult
-      print(f'add {edges_b=} * {mult=} {total=}')
-    if steps > rows * 2 + rows // 2:
-      # at 23 (rows * 2 + 1):           add 0
-      # at 28 (rows * 2 + rows//2 + 1): add 4
-      # at 45 (rows * 4 + 1):           add 12
-      # at 50 (rows * 4 + rows//2 + 1): add 16
-      # at 67 (rows * 6 + 1):           add 32
-      # at 72 (rows * 6 + rows//2 + 1): add 36
-      # at 89 (rows * 8 + 1):           add 60
-      # at 94 (rows * 8 + rows//2 + 1): add 64
+    total += center * mult
+    print(f'add {center=} * {mult=} {n=} {total=}')
 
-      # solved in sheets lol
-      mult = 4 * ((steps - 1) // (rows * 2))**2 - 4
-      if (steps - 1) % (rows * 2) >= rows // 2: mult += 4
-
-      # if steps >= 94: mult = 64
-      # elif steps >= 89: mult = 60
-      # elif steps >= 72: mult = 36
-      # elif steps >= 67: mult = 32
-      # elif steps >= 50: mult = 16
-      # elif steps >= 45: mult = 12
-      # else: mult = 4
-
-      total += filled * mult
-      print(f'add {filled=} * {mult=} {total=}')
-    if steps > rows * 3:
-      # at 34 (rows * 3 + 1 ):          add 4x additional center tiles
-      # at 39 (rows * 3 + rows//2 + 1): add 8
-      # at 56 (rows * 5 + 1):           add 20
-      # at 61 (rows * 5 + rows//2 + 1): add 24
-      # at 78 (rows * 7 + 1):           add 44
-      # at 83 (rows * 7 + rows//2 + 1): add 48
-
-      # i only have one l2 delta for the non% pattern but it's 8 again so i assume it's similar to the filled pattern
-
-      n = (((steps - 1) // rows) - 1) // 2
-      mult = 4 * (n**2 + n) - 4
-      if (steps - 1 + rows) % (rows * 2) >= rows // 2: mult += 4
-
-      # if steps >= 83: mult = 48
-      # elif steps >= 78: mult = 44
-      # elif steps >= 61: mult = 24
-      # elif steps >= 56: mult = 20
-      # elif steps >= 39: mult = 8
-      # else: mult = 4
-
-      total += center * mult
-      print(f'add {center=} * {mult=} {n=} {total=}')
-
-    # print(f'{steps=} {total=} {validation=} {total-validation=}')
-    print(f'{steps=} {total=}')
-    # assert total == validation
+  print(f'{steps=} {total=}')
 
 
 if PART1: part1()
