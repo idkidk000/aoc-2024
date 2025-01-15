@@ -2,7 +2,6 @@
 import sys
 from dataclasses import dataclass
 from typing import Self
-from heapq import heappush, heappop
 from collections import deque, defaultdict
 
 # yapf: disable
@@ -38,10 +37,6 @@ class Path():
   @property
   def cost(self): return self._cost
   def __repr__(self): return f'<Path position={self.position} length={len(self.history)} cost={self.cost}>'
-  # actually return __gt__ since this is for the heapq and we want to prioritise longer paths
-  # def __lt__(self, other: Self): return len(self.history) > len(other.history)
-  def __lt__(self, other: Self): return self.cost > other.cost
-  # def __lt__(self, other: Self): return len(self.history) < len(other.history)
 
 for arg in sys.argv[1:]:
   if arg.startswith('-e'): FILENAME = f'''example{arg[2:] if len(arg)>2 else ''}.txt'''
@@ -85,47 +80,6 @@ def find_end():
 
 
 def solve(walkable_slopes: bool = False) -> int:
-  # this was a lot faster before i tried to optimise it. but my v2 solve is WAAAAYYY faster
-
-  # queue = deque([Path(find_start())])
-  start, end = find_start(), find_end()
-  queue = [Path(start)]
-  longest = 0
-  # for p2 this needs a pruning mechanism but idk how yet since we're optimising for high cost
-  # it's not heapq with a len> sort (i.e. depth first) :(
-  # maybe prune paths whose hist contains our tile?
-  # cant use a tile->path dict to easily prune lower cost since we create a new path instance for each possible direction
-  # i suppose shortest first and a tile costs dict for later pruning is better than nothing
-
-  # should this be a recursive thing where we lookup the max costs between two nodes? how would loop avoidance work?
-
-  tile_costs: dict[Point, int] = {}
-  while queue:
-    # path = queue.pop()
-    path = heappop(queue)
-    debug(1, path, f'{len(queue)=} {longest=}')
-    position = path.position
-    char = grid[position.r][position.c]
-    for direction, offset in D4.items():
-      if (not walkable_slopes) and char in D4.keys() and char != direction: continue
-      next_position = position + offset
-      if not (0 <= next_position.r < rows and 0 <= next_position.c < cols): continue
-      if grid[next_position.r][next_position.c] == '#': continue
-      if next_position in path.history: continue
-      if tile_costs.get(next_position, 0) > path.len: continue
-      else: tile_costs[next_position] = path.len
-      debug(2, f'{position=} {direction=} {offset=} {next_position=} {Point(position.r,position.c) in path.history=}')
-      if next_position == end:
-        longest = max(longest, path.len)  #first tile doesn't count
-        debug(0, f'{longest=}')
-      else:
-        next_path = Path(next_position, path.history)
-        # queue.append(next_path)
-        heappush(queue, next_path)
-  return longest
-
-
-def solve2(walkable_slopes: bool = False) -> int:
   # the paths are all 1-wide so we can do some graph stuff
 
   # build a set of start, end, and junctions
@@ -141,7 +95,7 @@ def solve2(walkable_slopes: bool = False) -> int:
         if grid[nr][nc] != '#': count += 1
       # more than two path tiles, add it to nodes
       if count > 2: nodes.add(Point(r, c))
-  debug(0, f'{nodes=}')
+  debug(2, f'{nodes=}')
 
   # shortest path walk from each start node, make a dict of accessible nodes and their costs
   edge_costs: dict[Point, dict[Point, int]] = defaultdict(dict)
@@ -166,12 +120,13 @@ def solve2(walkable_slopes: bool = False) -> int:
           next_path = Path(next_position, path.history)
           queue.append(next_path)
 
-  debug(0, f'{edge_costs=}')
+  debug(2, f'{edge_costs=}')
 
   # edge walk. use path.cost, not len
   longest = 1
   queue = deque([Path(start)])
 
+  # this unfortunately still takes 2m for p2 and i'm not sure how to optimise further
   while queue:
     path = queue.pop()
     position = path.position
@@ -193,17 +148,13 @@ def solve2(walkable_slopes: bool = False) -> int:
 
 
 def part1():
-  # result = solve()
-  # print(f'part 1: {result}')
-  result2 = solve2()
-  print(f'part 1 v2: {result2}')
+  result = solve()
+  print(f'part 1: {result}')
 
 
 def part2():
-  # result = solve(True)
-  # print(f'part 2: {result}')
-  result2 = solve2(True)
-  print(f'part 2 v2: {result2}')
+  result = solve(True)
+  print(f'part 2: {result}')
 
 
 if PART1: part1()
