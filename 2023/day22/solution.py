@@ -3,6 +3,8 @@ import sys
 from dataclasses import dataclass
 from typing import Self
 import colorsys as coloursys
+from functools import cache
+from collections import defaultdict
 
 # yapf: disable
 sys.setrecursionlimit(1_000_000)
@@ -23,11 +25,8 @@ class Point():
 
 @dataclass
 class Brick():
-  p0: Point; p1: Point; index:int; _removed: bool=False
+  p0: Point; p1: Point; index:int
   def translate(self, val: Point): self.p0+=val; self.p1+=val
-  def remove(self): self._removed=True
-  @property
-  def removed(self): return self._removed
   #TODO: most of these properties should be precalculated really
   @property
   def w(self): return abs(self.p0.x-self.p1.x)+1
@@ -49,8 +48,8 @@ class Brick():
   def yz(self): return {(y,z) for y in range(self.min.y, self.max.y + 1) for z in range(self.min.z, self.max.z + 1)}
   @property
   def xyz(self): return {(x,y,z) for x in range(self.min.x, self.max.x + 1) for y in range(self.min.y, self.max.y + 1) for z in range(self.min.z, self.max.z + 1)}
-  def __repr__(self): return f'<Brick p0={self.p0} p1={self.p1} w={self.w} d={self.d} h={self.h} xy={self.xy} removed={self.removed}>'
-  def __hash__(self): return hash(self.index)
+  def __repr__(self): return f'<Brick index={self.index} p0={self.p0} p1={self.p1} w={self.w} d={self.d} h={self.h} xy={self.xy}>'
+  def __hash__(self): return self.index
   @classmethod
   def from_str(cls, line: str, index:int): return cls(*[Point(*map(int,p.split(','))) for p in line.split('~')], index) #type: ignore
 
@@ -96,7 +95,7 @@ def render(bricks: list[Brick], title: str = ''):
         i = volume.get((x, y, z))
         if i is None: continue
         value = f'{i+10:X}'[-1]  #aoc label from A
-        hue = 1 / len(bricks) * i  # not an off-by one since hue=0 and hue=1 are the same
+        hue = 1.0 / len(bricks) * i  # not an off-by one since hue=0 and hue=1 are the same
         r, g, b = [int(x * 255) for x in coloursys.hls_to_rgb(hue, fg_lightness, 1.0)]
         coloured = f'\x1b[38;2;{r};{g};{b};1;48;2;{bg_brick}m{value}\x1b[0m'
         row[x] = coloured
@@ -105,6 +104,7 @@ def render(bricks: list[Brick], title: str = ''):
 
 
 def get_bricks() -> list[Brick]:
+  # do the drop in here since both parts require it
   with open(FILENAME, 'r') as f:
     bricks = [Brick.from_str(x, i) for i, x in enumerate(f.read().splitlines())]
   if DEBUG: render(bricks, 'initial')
@@ -129,7 +129,6 @@ def get_bricks() -> list[Brick]:
     z_belows |= {xy: above.max.z for xy in above.xy}
 
   # relative min.zs are now invalid
-  bricks.sort(key=lambda x: x.min.z)
   if DEBUG: render(bricks, 'dropped')
   return bricks
 
@@ -137,6 +136,7 @@ def get_bricks() -> list[Brick]:
 def part1():
   # the question only wants to know which bricks could be *independently* removed
   # make a set of potential removals. loop over aboves. find their belows. if count belows==1, remove belows from potentials
+
   bricks = get_bricks()
   potentials = {*bricks}
   bricks.sort(key=lambda x: x.max.z, reverse=True)
@@ -151,83 +151,55 @@ def part1():
     if len(belows) == 1:
       debug(1, f'  cannot remove {belows}')
       potentials.difference_update(belows)
-  print(f'part 1: {len(potentials)}')
-  return
 
-  # slower version
-  # count_removed = 0
-  # for i, brick in enumerate(bricks):
-  #   debug(1, f'{i=} {brick=}')
-  #   can_remove = True
-  #   # loop from i+1 to end and find everything directly above us
-  #   for j in range(i + 1, len(bricks)):
-  #     if not can_remove: break
-  #     above = bricks[j]
-  #     # we're sorted on min.z so we can definitely break
-  #     if above.min.z > brick.max.z + 1: break
-  #     if above.min.z < brick.max.z + 1 or not above.xy.intersection(brick.xy): continue
-  #     debug(2, f'  {above=}')
-  #     # now we need to loop from j to -1 and find its belows which are not removed
-  #     count_below = 0
-  #     for k in range(j, -1, -1):  #loop hell tbqh
-  #       below = bricks[k]
-  #       # TODO: find an early exit
-  #       if below.max.z != above.min.z - 1 or not below.xy.intersection(above.xy): continue
-  #       debug(2, f'    {below=}')
-  #       count_below += 1
-  #     assert count_below > 0
-  #     if count_below == 1:  # just ours
-  #       can_remove = False
-  #       break
-  #   debug(2, f'  {can_remove=}')
-  #   if can_remove:
-  #     brick.remove()
-  #     count_removed += 1
-  #
-  # if DEBUG:
-  #   render([x for x in bricks if not x.removed], 'retained')
-  #   render([x for x in bricks if x.removed], 'removed')
-  #
-  # print(f'part 1: {count_removed}')
+  print(f'part 1: {len(potentials)}')
   # 519
 
 
 def part2():
-  ...
-  # # loop again from min.z
-  # count_removed = 0
-  # bricks.sort(key=lambda x: x.min.z)  # relative min.zs may have changed after drop
-  # CHECK_REMOVED = False  # i assume we'll want this for p2 so i'll keep the logic
-  # for i, brick in enumerate(bricks):
-  #   debug(1, f'{i=} {brick=}')
-  #   if CHECK_REMOVED and brick.removed: continue
-  #   can_remove = True
-  #   # loop from i+1 to end and find everything directly above us
-  #   for j in range(i + 1, len(bricks)):
-  #     if not can_remove: break
-  #     above = bricks[j]
-  #     # we're sorted on min.z so we can definitely break
-  #     if above.min.z > brick.max.z + 1: break
-  #     if above.min.z < brick.max.z + 1 or (CHECK_REMOVED and above.removed) or not above.xy.intersection(brick.xy):
-  #       continue
-  #     debug(2, f'  {above=}')
-  #     # now we need to loop from j to -1 and find its belows which are not removed
-  #     count_below = 0
-  #     for k in range(j, -1, -1):  #loop hell tbqh
-  #       below = bricks[k]
-  #       # TODO: find an early exit
-  #       if below.max.z != above.min.z - 1 or (CHECK_REMOVED and below.removed) or not below.xy.intersection(above.xy):
-  #         continue
-  #       debug(2, f'    {below=}')
-  #       count_below += 1
-  #     assert count_below > 0
-  #     if count_below == 1:  # just ours
-  #       can_remove = False
-  #       break
-  #   debug(2, f'  {can_remove=}')
-  #   if can_remove:
-  #     brick.remove()
-  #     count_removed += 1
+  # like a dependency tree, except all belows have to be removed for our item to be removed
+
+  # build dicts of above and below index sets
+  bricks = get_bricks()
+  above_indices: dict[int, set[int]] = defaultdict(set)
+  below_indices: dict[int, set[int]] = defaultdict(set)
+
+  bricks.sort(key=lambda x: x.min.z)
+  for i, below in enumerate(bricks):
+    debug(1, f'{i=} {below=}')
+    for above in bricks[i + 1:]:
+      if below.max.z + 1 < above.min.z: break
+      if below.max.z + 1 == above.min.z and below.xy.intersection(above.xy):
+        debug(2, f'  {above=}')
+        above_indices[below.index].add(above.index)
+
+  bricks.sort(key=lambda x: x.max.z, reverse=True)
+  for i, above in enumerate(bricks):
+    debug(1, f'{i=} {above=}')
+    for below in bricks[i + 1:]:
+      if above.min.z - 1 > below.max.z: break
+      if above.min.z - 1 == below.max.z and above.xy.intersection(below.xy):
+        debug(2, f'  {below=}')
+        below_indices[above.index].add(below.index)
+
+  # surprisingly not too slow
+  total = 0
+  for brick in bricks:
+    removed = {brick.index}
+    found = True
+    while found:
+      found = False
+      for index in removed.copy():
+        for above_index in above_indices[index]:
+          if above_index in removed: continue  #  this is a little faster than doing a difference
+          if len(below_indices[above_index].difference(removed)) == 0:
+            removed.add(above_index)
+            found = True
+    debug(0, f'{brick=} {len(removed)=}')
+    total += len(removed) - 1
+
+  print(f'part 2: {total}')
+  #109531
 
 
 if PART1: part1()
