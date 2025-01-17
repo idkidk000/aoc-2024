@@ -1,12 +1,17 @@
 #!/usr/bin/env -S deno --allow-read
 
-const DEBUG = Deno.args.reduce((acc, item) => (item == '-d' ? 1 : item == '-d2' ? 2 : item == '-d3' ? 3 : acc), 0);
+const DEBUG = Deno.args.reduce((acc, item) => (item.startsWith('-d') ? Number(item.slice(2) || '1') : acc), 0);
 const FILENAME = Deno.args.reduce(
-  (acc, item) =>
-    item == '-i' ? 'input.txt' : item == '-e' ? 'example.txt' : item.startsWith('-e') ? `example${item.slice(-1)}.txt` : acc,
+  (acc, item) => (item == '-i' ? 'input.txt' : item.startsWith('-e') ? `example${item.slice(2)}.txt` : acc),
   'example.txt'
 );
-console.log({ FILENAME, DEBUG });
+const [PART1, PART2] = Deno.args.reduce(
+  (acc, item) => (item == '-p0' ? [false, false] : item == '-p1' ? [true, false] : item == '-p2' ? [false, true] : acc),
+  [true, true]
+);
+
+console.log({ FILENAME, DEBUG, PART1, PART2 });
+// deno-lint-ignore no-unused-vars
 const D4 = [
   [-1, 0],
   [0, 1],
@@ -14,23 +19,21 @@ const D4 = [
   [0, -1],
 ];
 
-const text = await Deno.readTextFile(FILENAME);
-if (DEBUG > 1) console.debug({ text });
+// deno-lint-ignore no-explicit-any
+const debug = (level: number, ...data: any[]) => {
+  if (DEBUG >= level) console.debug(...data);
+};
 
-const mapData = text
-  .split('\n')
-  .filter((line) => line.trim())
-  .map((line) => line.split(''));
-if (DEBUG > 1) console.debug({ mapData });
+const input = await Deno.readTextFile(FILENAME);
 
-const getMapParams = (mapData: string[][]) => {
-  const rows = mapData.length;
-  const cols = mapData[0].length;
+const parseInput = () => {
+  const grid = input.split('\n').filter((line) => line.trim());
+  const rows = grid.length;
+  const cols = grid[0].length;
   let startAt, endAt;
   for (let rowIx = 0; rowIx < rows; rowIx++) {
     for (let colIx = 0; colIx < cols; colIx++) {
-      const charAt = mapData[rowIx][colIx];
-      switch (charAt) {
+      switch (grid[rowIx][colIx]) {
         case 'S':
           startAt = [rowIx, colIx];
           break;
@@ -43,15 +46,20 @@ const getMapParams = (mapData: string[][]) => {
   if (typeof startAt === 'undefined' || typeof endAt === 'undefined') {
     throw new Error(`could not find start and end pos startAt=${startAt}, endAt=${endAt}`);
   }
-  return { rows, cols, startAt, endAt };
+  return { grid, rows, cols, startAt, endAt };
 };
 
-const printMap = (mapData: string[][]) => {
-  for (let rowIx = 0; rowIx < mapData.length; rowIx++) {
-    console.log(`${String(rowIx).padStart(3, ' ')}:  ${mapData[rowIx].join('')}`);
+const drawGrid = (grid: string[]) => {
+  for (let rowIx = 0; rowIx < grid.length; rowIx++) {
+    console.log(`${String(rowIx).padStart(3, ' ')}:  ${grid[rowIx]}`);
   }
 };
 
-if (DEBUG) printMap(mapData);
-const { rows, cols, startAt, endAt } = getMapParams(mapData);
-if (DEBUG) console.debug({ rows, cols, startAt, endAt });
+const part1 = () => {};
+const part2 = () => {};
+
+const { grid, rows, cols, startAt, endAt } = parseInput();
+if (DEBUG) drawGrid(grid);
+debug(1, { rows, cols, startAt, endAt });
+if (PART1) part1();
+if (PART2) part2();
