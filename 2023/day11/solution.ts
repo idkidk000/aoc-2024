@@ -21,42 +21,58 @@ const debug = (level: number, ...data: any[]) => {
 
 const input = await Deno.readTextFile(FILENAME);
 
-const parseInput = () =>
-  input
-    .split('\n')
-    .filter((line) => line.trim())
-    .map((row) => row.split(''));
-
-const solve = (expansion: number) => {
+const parseInput = () => {
   interface Coord {
     r: number;
     c: number;
   }
-
-  const grid = parseInput();
-  // bit grim tbh
-  const galaxies: Coord[] = grid
-    .flatMap((row, r) => row.map((char, c) => (char == '#' ? { r, c } : null)))
-    .filter((g) => g != null);
+  const grid = input
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((row) => row.split(''));
+  const galaxies: Coord[] = [];
+  for (const [r, row] of grid.entries()) {
+    for (const [c, char] of row.entries()) {
+      if (char == '#') galaxies.push({ r, c });
+    }
+  }
   const occupiedRows = new Set(galaxies.map((g) => g.r));
   const occupiedCols = new Set(galaxies.map((g) => g.c));
   debug(1, { galaxies, occupiedRows, occupiedCols });
+  return { grid, galaxies, occupiedRows, occupiedCols };
+};
+
+const range = (from: number, to: number) => {
+  // generators are quite slow so we'll just return an array
+  const result: number[] = [];
+  for (let i = from; i < to; ++i) result.push(i);
+  return result;
+};
+
+const solve = (expansion: number) => {
+  const { galaxies, occupiedRows, occupiedCols } = parseInput();
   const distances: number[] = [];
-  for (let i = 0; i < galaxies.length; ++i) {
-    const left = galaxies[i];
-    for (let j = i + 1; j < galaxies.length; ++j) {
-      const right = galaxies[j];
-      let distance = Maths.abs(left.r - right.r) + Maths.abs(left.c - right.c);
-      for (let k = Maths.min(left.r, right.r); k < Maths.max(left.r, right.r); ++k) {
-        if (!occupiedRows.has(k)) distance += expansion - 1;
-      }
-      for (let k = Maths.min(left.c, right.c); k < Maths.max(left.c, right.c); ++k) {
-        if (!occupiedCols.has(k)) distance += expansion - 1;
-      }
+
+  for (const [i, left] of galaxies.entries()) {
+    for (const right of galaxies.slice(i + 1)) {
+      const [rMin, rMax, cMin, cMax] = [
+        Maths.min(left.r, right.r),
+        Maths.max(left.r, right.r),
+        Maths.min(left.c, right.c),
+        Maths.max(left.c, right.c),
+      ];
+      const distance =
+        rMax -
+        rMin +
+        cMax -
+        cMin +
+        range(rMin + 1, rMax).filter((v) => !occupiedRows.has(v)).length * (expansion - 1) +
+        range(cMin + 1, cMax).filter((v) => !occupiedCols.has(v)).length * (expansion - 1);
       distances.push(distance);
       debug(2, { left, right, distance });
     }
   }
+
   return distances.reduce((acc, item) => acc + item, 0);
 };
 
@@ -66,7 +82,7 @@ const part1 = () => {
 };
 
 const part2 = () => {
-  const result = solve(1_000_000_000);
+  const result = solve(1_000_000);
   console.log('part 2:', result);
 };
 
