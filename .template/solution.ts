@@ -40,6 +40,7 @@ class Args {
 class Coord {
   constructor(public r: number, public c: number) {}
   add = (value: Coord) => new Coord(this.r + value.r, this.c + value.c);
+  eq = (other: Coord) => this.r == other.r && this.c == other.c;
   // only uncomment if needed since their existance hurts performance
   /*   sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
   mul = (value: number) => new Coord(this.r * value, this.c * value);
