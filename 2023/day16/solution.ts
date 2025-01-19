@@ -127,6 +127,35 @@ class HashedSet<K, H> {
   values = () => this.map.values();
 }
 
+class Deque<T> {
+  private ring: T[];
+  private front: number = 0;
+  private back: number = 0;
+  constructor(public length: number) {
+    this.ring = new Array<T>(length);
+  }
+  pushFront = (item: T) => {
+    this.front = (this.front - 1 + this.length) % this.length;
+    if (this.front == this.back) throw new Error('bruh');
+    this.ring[this.front] = item;
+  };
+  pushBack = (item: T) => {
+    this.ring[this.back] = item;
+    this.back = (this.back + 1) % this.length;
+    if (this.front == this.back) throw new Error('bruh');
+  };
+  popFront = () => {
+    const item = this.ring[this.front];
+    this.front = (this.front + 1) % this.length;
+    return item;
+  };
+  popBack = () => {
+    this.back = (this.back - 1 + this.length) % this.length;
+    return this.ring[this.back];
+  };
+  empty = () => this.front == this.back;
+}
+
 // deno-lint-ignore no-explicit-any
 const debug = (level: number, ...data: any[]) => {
   if (args.debug >= level) console.debug(...data);
@@ -144,34 +173,32 @@ interface CoordDir {
 }
 
 const simulate = (grid: Grid, start: CoordDir) => {
-  const queue = new Array<CoordDir>();
-  const walked = new HashedSet<CoordDir, string>((key) => `${key.coord.r},${key.coord.c},${key.direction}`);
-  queue.push(start);
+  const queue = new Deque<CoordDir>(grid.rowCount);
+  const walked = new HashedSet<CoordDir, number>((key) => key.coord.r * 71 + key.coord.c * 2617 + key.direction * 7919);
+  queue.pushBack(start);
 
   const step = (coordDir: CoordDir): CoordDir => ({
     ...coordDir,
     coord: coordDir.coord.add(grid.directions[coordDir.direction]),
   });
 
-  while (queue.length) {
-    const current = queue.shift()!;
+  while (!queue.empty()) {
+    const current = queue.popFront();
     if (grid.oob(current.coord) || walked.has(current)) continue;
     walked.add(current);
     const char = grid.get(current.coord);
     debug(1, { r: current.coord.r, c: current.coord.c, d: current.direction, char });
     // flip the 1s bit on /, and the 1s and 2s on \
-    if (char === '/') queue.push(step({ ...current, direction: current.direction ^ 1 }));
-    else if (char === '\\') queue.push(step({ ...current, direction: current.direction ^ 3 }));
+    if (char === '/') queue.pushBack(step({ ...current, direction: current.direction ^ 1 }));
+    else if (char === '\\') queue.pushBack(step({ ...current, direction: current.direction ^ 3 }));
     else if ((char === '|' && [1, 3].includes(current.direction)) || (char === '-' && [0, 2].includes(current.direction))) {
-      queue.push(
-        step({ ...current, direction: Maths.pmod(current.direction + 1, 4) }),
-        step({ ...current, direction: Maths.pmod(current.direction - 1, 4) })
-      );
-    } else queue.push(step(current));
+      queue.pushBack(step({ ...current, direction: Maths.pmod(current.direction + 1, 4) }));
+      queue.pushBack(step({ ...current, direction: Maths.pmod(current.direction - 1, 4) }));
+    } else queue.pushBack(step(current));
   }
 
-  return new HashedSet<Coord, string>(
-    (key) => `${key.r},${key.c}`,
+  return new HashedSet<Coord, number>(
+    (key) => key.r * 71 + key.c * 2617,
     walked.values().map((item) => item.coord)
   ).size();
 };

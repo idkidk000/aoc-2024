@@ -156,6 +156,35 @@ class HashedMap<K, V, H> {
   values = () => this.map.values().map((v) => v.value);
 }
 
+class Deque<T> {
+  private ring: T[];
+  private front: number = 0;
+  private back: number = 0;
+  constructor(public length: number) {
+    this.ring = new Array<T>(length);
+  }
+  pushFront = (item: T) => {
+    this.front = (this.front - 1 + this.length) % this.length;
+    if (this.front == this.back) throw new Error('bruh');
+    this.ring[this.front] = item;
+  };
+  pushBack = (item: T) => {
+    this.ring[this.back] = item;
+    this.back = (this.back + 1) % this.length;
+    if (this.front == this.back) throw new Error('bruh');
+  };
+  popFront = () => {
+    const item = this.ring[this.front];
+    this.front = (this.front + 1) % this.length;
+    return item;
+  };
+  popBack = () => {
+    this.back = (this.back - 1 + this.length) % this.length;
+    return this.ring[this.back];
+  };
+  empty = () => this.front == this.back;
+}
+
 // deno-lint-ignore no-explicit-any
 const debug = (level: number, ...data: any[]) => {
   if (args.debug >= level) console.debug(...data);
