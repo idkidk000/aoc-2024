@@ -40,9 +40,10 @@ class Args {
 class Coord {
   constructor(public r: number, public c: number) {}
   add = (value: Coord) => new Coord(this.r + value.r, this.c + value.c);
-  sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
+  // only uncomment if needed since their existance hurts performance
+  /*   sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
   mul = (value: number) => new Coord(this.r * value, this.c * value);
-  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value));
+  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value)); */
 }
 
 class Grid {
@@ -163,15 +164,19 @@ class Deque<T> {
   constructor(public length: number) {
     this.ring = new Array<T>(length);
   }
-  pushFront = (item: T) => {
-    this.front = (this.front - 1 + this.length) % this.length;
-    if (this.front == this.back) throw new Error('bruh');
-    this.ring[this.front] = item;
+  pushFront = (...items: T[]) => {
+    for (const item of items) {
+      this.front = (this.front - 1 + this.length) % this.length;
+      if (this.front == this.back) throw new Error('bruh');
+      this.ring[this.front] = item;
+    }
   };
-  pushBack = (item: T) => {
-    this.ring[this.back] = item;
-    this.back = (this.back + 1) % this.length;
-    if (this.front == this.back) throw new Error('bruh');
+  pushBack = (...items: T[]) => {
+    for (const item of items) {
+      this.ring[this.back] = item;
+      this.back = (this.back + 1) % this.length;
+      if (this.front == this.back) throw new Error('bruh');
+    }
   };
   popFront = () => {
     const item = this.ring[this.front];

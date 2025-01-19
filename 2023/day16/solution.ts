@@ -31,9 +31,10 @@ class Args {
 class Coord {
   constructor(public r: number, public c: number) {}
   add = (value: Coord) => new Coord(this.r + value.r, this.c + value.c);
-  sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
+  // commenting these out improved performance 3x when i benchmarked 100m instantiations
+  /*   sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
   mul = (value: number) => new Coord(this.r * value, this.c * value);
-  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value));
+  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value)); */
 }
 
 class Grid {
