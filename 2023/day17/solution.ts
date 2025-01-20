@@ -32,10 +32,6 @@ class Coord {
   constructor(public r: number, public c: number) {}
   add = (value: Coord) => new Coord(this.r + value.r, this.c + value.c);
   eq = (other: Coord) => this.r == other.r && this.c == other.c;
-  // only uncomment if needed since their existance hurts performance
-  /*   sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
-  mul = (value: number) => new Coord(this.r * value, this.c * value);
-  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value)); */
 }
 
 //TODO: update template with generic grid
@@ -45,9 +41,9 @@ class Grid<T> {
   data: T[]; //grid is flattened into an array of single chars
   directions = [new Coord(-1, 0), new Coord(0, 1), new Coord(1, 0), new Coord(0, -1)];
 
-  constructor(data: string[], parseCallback: (cell: string) => T = (cell) => cell as unknown as T) {
+  constructor(data: string[], cellParser: (cell: string) => T = (cell) => cell as unknown as T) {
     [this.rowCount, this.colCount] = [data.length, data[0].length];
-    this.data = data.flatMap((row) => row.split('').map((cell) => parseCallback(cell)));
+    this.data = data.flatMap((row) => row.split('').map((cell) => cellParser(cell)));
   }
 
   rcToIndex = (r: number, c: number) => r * this.colCount + c;
@@ -101,18 +97,18 @@ class Grid<T> {
     for (let i = 0; i < this.colCount; ++i) result[i] = [i, this.col(i)];
     return result;
   };
-  print = (highlight?: { r: number; c: number; colour?: number; value?: T }[]) => {
+  print = (highlight?: { r: number; c: number; colour?: number; value?: T | string }[]) => {
     if (typeof highlight !== 'undefined') {
       // the slow version
-      const hashed = new Map<number, { colour: number; value: T | undefined }>(
-        highlight.map((item) => [item.r * 71 + item.c * 7919, { colour: item.colour ?? 0, value: item.value }])
+      const overrides = new Map<number, { colour: number; value: T | string | undefined }>(
+        highlight.map((item) => [(item.r << 8) + item.c, { colour: item.colour ?? 0, value: item.value }])
       );
       for (const [r, row] of this.rows())
         console.log(
           `${r.toString().padStart(3, ' ')}: ${row
             .map((cell, c) => {
-              const highlight = hashed.get(r * 71 + c * 7919);
-              return highlight ? `\x1b[7;${31 + highlight.colour}m${highlight.value ?? cell}\x1b[0m` : cell;
+              const override = overrides.get((r << 8) + c);
+              return override ? `\x1b[7;${31 + override.colour}m${override.value ?? cell}\x1b[0m` : cell;
             })
             .join('')}`
         );
@@ -211,7 +207,7 @@ const parseInput = () =>
     (cell) => Number(cell)
   );
 
-const simulate = (grid: Grid<number>) => {
+const simulate = (grid: Grid<number>, ultra = false) => {
   const end = new Coord(grid.rowCount - 1, grid.colCount - 1);
   interface WalkedEntry {
     coord: Coord;
@@ -219,55 +215,62 @@ const simulate = (grid: Grid<number>) => {
     streak: number;
   }
   const walked = new HashedMap<WalkedEntry, number, number>(
-    // official wikipedia prime number page enjoyer
-    (key) => key.coord.r * 173 + key.coord.c * 1811 + key.dir * 7723 + key.streak * 7919
+    (key) => key.coord.r + (key.coord.c << 8) + (key.dir << 16) + (key.streak << 18)
   );
   interface QueueEntry extends WalkedEntry {
     cost: number;
-    history: WalkedEntry[]; //FIXME: remove once working
+    // history: WalkedEntry[]; //FIXME: remove once working
   }
-  //FIXME: BinaryHeap is a copy-paste job. write a better version when this works
+  const canTurn = (streak: number, cost: number) => streak >= (ultra ? 4 : 0) || cost === 0;
+  const mustTurn = (streak: number) => streak >= (ultra ? 10 : 3);
   const queue = new BinaryHeap<QueueEntry>((a, b) => a.cost - b.cost);
   const start: WalkedEntry = { coord: new Coord(0, 0), dir: 1, streak: 0 };
-  queue.push({ ...start, cost: 0, history: [start] });
+  // queue.push({ ...start, cost: 0, history: [start] });
+  queue.push({ ...start, cost: 0 });
   walked.set(start, 0);
   let lowestCost = Infinity;
-  let cheapestPath: WalkedEntry[] = [];
+  // let cheapestPath: WalkedEntry[] = [];
   while (queue.size) {
-    const { coord, dir, streak, cost, history } = queue.pop()!;
+    // const { coord, dir, streak, cost, history } = queue.pop()!;
+    const { coord, dir, streak, cost } = queue.pop()!;
     // debug(2, { coord, dir, streak, cost });
     for (const turn of [-1, 0, 1]) {
-      if (streak === 3 && turn === 0) continue; //must turn after 3 steps
+      if ((mustTurn(streak) && turn === 0) || (!canTurn(streak, cost) && turn !== 0)) continue;
       const nextDir = Maths.pmod(dir + turn, 4);
       const nextCoord = coord.add(grid.directions[nextDir]);
       if (grid.oob(nextCoord)) continue;
-      const nextWalked: WalkedEntry = { coord: nextCoord, dir: nextDir, streak: turn === 0 ? streak + 1 : 1 };
+      const nextStreak = turn === 0 ? streak + 1 : 1;
+      const nextWalked: WalkedEntry = { coord: nextCoord, dir: nextDir, streak: nextStreak };
       const nextCost = cost + grid.get(nextCoord);
       if (Maths.min(walked.get(nextWalked) ?? Infinity, lowestCost) <= nextCost) continue;
-      const nextQueue: QueueEntry = { ...nextWalked, cost: nextCost, history: [...history, nextWalked] };
-      if (end.eq(nextCoord)) {
+      // const nextQueue: QueueEntry = { ...nextWalked, cost: nextCost, history: [...history, nextWalked] };
+      const nextQueue: QueueEntry = { ...nextWalked, cost: nextCost };
+      if (end.eq(nextCoord) && canTurn(nextStreak, nextCost)) {
         debug(1, 'completed', nextQueue);
         lowestCost = nextCost; //we already pruned lowestCost<=nextCost
-        cheapestPath = nextQueue.history;
+        // cheapestPath = nextQueue.history;
       } else {
         walked.set(nextWalked, nextCost);
         queue.push(nextQueue);
       }
     }
   }
-  grid.print(cheapestPath.map((item) => ({ ...item.coord, colour: item.dir, value: item.streak })));
+  // if (args.debug) grid.print(cheapestPath.map((item) => ({ ...item.coord, colour: item.dir, value: item.streak % 10 })));
   return lowestCost;
 };
 
 const part1 = () => {
   const result = simulate(parseInput());
   console.log('part 1:', result);
-  // it's a LOT faster than the python solve but it's also wrong :)
-  //BUG: returns 861, should be 859
-  //works correctly on example and example2 (which is just a chunk of input.txt i used for py testing) ofc
+  // 859
+  // earlier bug was caused by hash collisions
 };
 
-const part2 = () => {};
+const part2 = () => {
+  const result = simulate(parseInput(), true);
+  console.log('part 2:', result);
+  // 1027
+};
 
 if (args.part1) part1();
 if (args.part2) part2();
