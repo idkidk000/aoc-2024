@@ -59,6 +59,7 @@ def part1():
   # ugh https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
   # the equation i can read intersects anywhere on the line so we also need to check whether the collision is in the velocity vector for both lines
   counts: Counter[str] = Counter()
+  # output=[]
   for left, right in combinations(hailstones, 2):
     debug(0, f'{left=} {right=}')
     v1 = left.position
@@ -84,8 +85,14 @@ def part1():
     inside = min_xy <= px <= max_xy and min_xy <= py <= max_xy
     debug(1, f'  {px=} {py=} {left_dp=} {right_dp=} {future=} {inside=}')
     counts[f'''{'future' if future else 'past'}_{'inside' if inside else 'outside'}'''] += 1
+    counts[f'''total_{'future' if future else 'past'}'''] += 1
+    counts[f'''total_{'inside' if inside else 'outside'}'''] += 1
+    counts['total'] += 1
+
+    # output.append(f'{left.index} {right.index} {denominator} {px} {py}')
 
   debug(0, f'{counts=}')
+  # with open('output.py.txt','w') as f: f.write('\n'.join(output))
   print(f'''part 1: {counts['future_inside']}''')
   #15889
 
