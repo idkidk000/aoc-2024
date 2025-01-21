@@ -187,26 +187,29 @@ const part2 = () => {
   let i = 0;
   // loop until we have 5 values for all watched nodes
   while (watchNodes.values().some((item) => item.length < 5)) {
-    i++;
+    ++i;
     simulate(nodes, (sender, _, state) => {
       if (state && watchNodes.has(sender)) watchNodes.get(sender)!.push(i);
     });
   }
   debug(1, watchNodes);
-  // map cycle number to deltas
+
+  // generate deltas, assert that each node has exactly one delta, assert that cycle is  0-aligned
   const deltas = watchNodes
-    .values()
-    .map((history) => history.map((item, i, arr) => arr[i + 1] - item).filter((_, i, arr) => i < arr.length - 1))
+    .entries()
+    .map(([name, history]) => {
+      const nodeDeltas = new Set(history.map((item, i) => history[i + 1] - item).filter((_, i) => i < history.length - 1));
+      debug(2, { name, history, nodeDeltas });
+      const [delta] = [...nodeDeltas];
+      if (delta !== history[0]) throw new Error('history not 0-aligned');
+      return delta;
+    })
     .toArray();
+
   debug(1, { deltas });
-  // assert that each node has only one distinct delta value
-  if (deltas.some((item) => new Set<number>(item.values()).size > 1)) throw new Error('bruh');
-  const firstDeltas = deltas.map((item) => item[0]);
-  debug(1, { firstDeltas });
-  // then lcm the deltas
-  const cycleCount = Maths.lcm(firstDeltas);
-  debug(1, { cycleCount });
-  console.log('part 2:', cycleCount);
+
+  const convergence = Maths.lcm(deltas);
+  console.log('part 2:', convergence);
 };
 
 if (args.part1) part1();

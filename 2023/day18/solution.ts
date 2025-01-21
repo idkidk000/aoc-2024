@@ -1,5 +1,16 @@
 #!/usr/bin/env -S deno --allow-read
 // #region base aoc template
+declare global {
+  interface Math {
+    pmod(value: number, mod: number): number;
+  }
+}
+
+Math.pmod = (value: number, mod: number) => {
+  const result = value % mod;
+  return result >= 0 ? result : result + mod;
+};
+
 const Maths = Math;
 
 class Args {
@@ -86,7 +97,7 @@ const part2 = () => {
     .filter((line) => line.trim())
     .map((line) => {
       const [_, distanceHex, direction] = regex.exec(line)!;
-      return { direction: (Number(direction) + 1) % 4, distance: parseInt(distanceHex, 16) };
+      return { direction: Maths.pmod(Number(direction) + 1, 4), distance: parseInt(distanceHex, 16) };
     });
   const result = solve(moves);
   console.log('part 2:', result);
