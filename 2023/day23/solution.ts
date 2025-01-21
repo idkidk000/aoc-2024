@@ -189,7 +189,7 @@ class HashedMap<K, V, H> {
     return this.map.size;
   }
   values = () => this.map.values().map((v) => v.value);
-  entries = () => this.map.values().map((v) => [v.key, v.value]);
+  entries = () => this.map.values().map((v) => [v.key as K, v.value as V]) as IteratorObject<[K, V]>;
   [Symbol.iterator]() {
     return this.entries();
   }
@@ -241,65 +241,6 @@ class Deque<T> {
   get size() {
     return this.length - this.front + this.back;
   }
-}
-
-//FIXME: yes, i still need to write my own
-class BinaryHeap<T> {
-  private heap: T[] = [];
-  constructor(public comparator: (a: T, b: T) => number) {}
-  get size(): number {
-    return this.heap.length;
-  }
-  get empty(): boolean {
-    return this.heap.length === 0;
-  }
-  push = (value: T) => {
-    this.heap.push(value);
-    this.siftUp();
-  };
-  pop = () => {
-    if (this.size === 0) return undefined;
-    const top = this.heap[0];
-    const end = this.heap.pop()!;
-    if (this.size > 0) {
-      this.heap[0] = end;
-      this.siftDown();
-    }
-    return top;
-  };
-  private siftUp = () => {
-    let idx = this.size - 1;
-    const element = this.heap[idx];
-    while (idx > 0) {
-      const parentIdx = Math.floor((idx - 1) / 2);
-      const parent = this.heap[parentIdx];
-      if (this.comparator(element, parent) >= 0) break;
-      this.heap[idx] = parent;
-      idx = parentIdx;
-    }
-    this.heap[idx] = element;
-  };
-  private siftDown = () => {
-    let idx = 0;
-    const length = this.size;
-    const element = this.heap[0];
-    while (true) {
-      const leftIdx = 2 * idx + 1;
-      const rightIdx = 2 * idx + 2;
-      let swapIdx = -1;
-
-      if (leftIdx < length && this.comparator(this.heap[leftIdx], element) < 0) {
-        swapIdx = leftIdx;
-      }
-      if (rightIdx < length && this.comparator(this.heap[rightIdx], this.heap[swapIdx === -1 ? idx : leftIdx]) < 0) {
-        swapIdx = rightIdx;
-      }
-      if (swapIdx === -1) break;
-      this.heap[idx] = this.heap[swapIdx];
-      idx = swapIdx;
-    }
-    this.heap[idx] = element;
-  };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -374,45 +315,68 @@ const solve = (grid: Grid, enableSlopes = true) => {
     }
   }
 
-  for (const [k, v] of nodeMap.entries()) {
-    debug(1, { k, v });
-  }
+  // switch from coords to their hashes (well it's a bit pack really) for speed
+  const optimisedNodeMap = new Map<number, { node: number; cost: number }[]>(
+    nodeMap.entries().map(([k, v]) => [
+      (k.r << 8) + k.c,
+      v
+        .values()
+        .map((v) => ({ node: (v.node.r << 8) + v.node.c, cost: v.cost }))
+        .toArray(),
+    ])
+  );
+  debug(1, optimisedNodeMap);
+  const optimisedStartNode = (startNode.r << 8) + startNode.c;
+  const optimisedEndNode = (endNode.r << 8) + endNode.c;
 
   // now walk the nodeMap and find the longest path from startNode to endNode
   // storing "walked" on the queue AND CREATING A NEW INSTANCE FOR EACH STEP is very unfortunate and i don't see a way around it
-  interface QueueEntry {
-    node: Coord;
-    walked: HashedSet<Coord, number>;
-    cost: number;
-  }
-  const queue = new BinaryHeap<QueueEntry>((a, b) => b.cost - a.cost);
-  //FIXME: coord hashes in regular number sets would be faster
-  //FIXME: i'm still missing some optimisation but i can't think of a way to prune paths or even set a break condition
-  // queue.push({ node: startNode, cost: 0 });
-  // const walked = new HashedSet<Coord, number>((key) => (key.r << 8) + key.c, [startNode]);
-  queue.push({ node: startNode, walked: new HashedSet<Coord, number>((key) => (key.r << 8) + key.c, [startNode]), cost: 0 });
-  let highestCost = 0;
-  while (!queue.empty) {
-    const { node, walked, cost } = queue.pop()!;
-    // const { node, cost } = queue.pop()!;
-    for (const { node: nextNode, cost: nodeCost } of nodeMap.get(node)!) {
-      if (walked.has(nextNode)) continue;
-      const nextCost = cost + nodeCost;
-      if (endNode.eq(nextNode)) {
-        debug(nextCost > highestCost ? 1 : 2, 'end', { nextCost, highestCost, qsize: queue.size });
-        highestCost = Maths.max(highestCost, nextCost);
-      } else {
-        // walked.add(nextNode);
-        queue.push({
-          node: nextNode,
-          walked: new HashedSet<Coord, number>((key) => (key.r << 8) + key.c, [...walked, nextNode]), //grim
-          cost: nextCost,
-        });
-      }
-    }
-  }
 
-  return highestCost;
+  // this is as fast i i could get it using a queue. push and pop from the same end was an important optimisation. ~30s
+  // interface OptimisedQueueEntry {
+  //   node: number;
+  //   walked: Set<number>;
+  //   cost: number;
+  // }
+  // const queue = new Deque<OptimisedQueueEntry>(1000);
+  // queue.pushFront({ node: optimisedStartNode, walked: new Set<number>([optimisedStartNode]), cost: 0 });
+  // let highestCost = 0;
+  // while (!queue.empty) {
+  //   const { node, walked, cost } = queue.popFront()!;
+  //   for (const { node: nextNode, cost: nodeCost } of optimisedNodeMap.get(node)!) {
+  //     if (walked.has(nextNode)) continue;
+  //     const nextCost = cost + nodeCost;
+  //     if (optimisedEndNode === nextNode) {
+  //       debug(nextCost > highestCost ? 1 : 2, 'end', { nextCost, highestCost, qsize: queue.size });
+  //       highestCost = Maths.max(highestCost, nextCost);
+  //     } else {
+  //       // walked.add(nextNode)
+  //       queue.pushFront({
+  //         node: nextNode,
+  //         walked: new Set<number>([...walked, nextNode]),
+  //         // walked,
+  //         cost: nextCost,
+  //       });
+  //     }
+  //   }
+  // }
+  // return highestCost;
+
+  // depth first search based on hyperneutrino's video. ~5s
+  // walked is unwound as each level of the depth scan returns, so only the node number is passed as a param and the cost is accumulated
+  const walked = new Set<number>();
+  const dfs = (fromNode: number): number => {
+    if (fromNode === optimisedEndNode) return 0;
+    walked.add(fromNode);
+    const highestCost = optimisedNodeMap
+      .get(fromNode)!
+      .filter((item) => !walked.has(item.node))
+      .reduce((acc, item) => Maths.max(acc, dfs(item.node) + item.cost), -Infinity);
+    walked.delete(fromNode);
+    return highestCost;
+  };
+
+  return dfs(optimisedStartNode);
 };
 
 const part1 = () => {
