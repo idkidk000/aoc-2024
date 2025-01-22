@@ -122,29 +122,31 @@ def solve(walkable_slopes: bool = False) -> int:
 
   debug(2, f'{edge_costs=}')
 
-  # edge walk. use path.cost, not len
-  longest = 1
-  queue = deque([Path(start)])
+  # precalc hashes so we're only throwing primitives around
+  optimised_edge_costs = {
+    (node.r << 8) + node.c: {
+    (neighbour.r << 8) + neighbour.c: cost
+    for neighbour, cost in neighbours.items()
+    }
+    for node, neighbours in edge_costs.items()
+  }
+  optimised_start = (start.r << 8) + start.c
+  optimised_end = (end.r << 8) + end.c
 
-  # this unfortunately still takes 2m for p2 and i'm not sure how to optimise further
-  while queue:
-    path = queue.pop()
-    position = path.position
-    debug(1, f'edge walk {path=} {len(queue)=} {longest=}')
-    for next_position, cost in edge_costs[position].items():
-      if next_position in path.history: continue
-      next_path = Path(next_position, path.history, path.cost + cost)
-      if next_position == end:
-        if next_path.cost > longest:
-          longest = next_path.cost
-          debug(0, f'  longest: {next_path}')
-          # debug(0,f'  longest: {next_path} {next_path.history}')
-          # for node_from,node_to in zip(next_path.history,next_path.history[1:]):
-          #   debug(1,f'    {node_from=} {node_to=} edge_cost={edge_costs[node_from][node_to]}')
-      else:
-        queue.append(next_path)
+  # recursive dfs, which is basically the same as pushing and popping from the same end of a deque without the overhead. ~17s instead of ~120s
+  walked: set[int] = set()
 
-  return longest
+  def dfs(from_node: int):
+    if from_node == optimised_end: return 0
+    walked.add(from_node)
+    max_cost = -INF # stop bad paths from propagating
+    for next_node, cost in optimised_edge_costs[from_node].items():
+      if next_node in walked: continue
+      max_cost = max(max_cost, dfs(next_node) + cost)
+    walked.remove(from_node)
+    return max_cost
+
+  return dfs(optimised_start)
 
 
 def part1():
