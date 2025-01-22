@@ -32,6 +32,7 @@ class Vec3 {
     return this.toString();
   }
 }
+
 class Hailstone {
   constructor(public readonly id: number, public readonly position: Vec3, public readonly velocity: Vec3) {}
   toString = () => `Hailstone { id: ${this.id}, position: ${this.position.toString()}, velocitiy: ${this.velocity.toString()} }`;
@@ -56,31 +57,24 @@ const parseInput = () =>
 const part1 = () => {
   const hailstones = parseInput();
   const [minXy, maxXy] = [200_000_000_000_000n, 400_000_000_000_000n];
-  debug(1, hailstones);
+  debug(4, hailstones);
   // copying from my python solve because this wasn't fun the first time around either :)
   const collisionCounts = new Map<string, number>();
   const incrementCounter = (collides: boolean, inside: boolean, future: boolean) => {
-    // yes this function is a catastrophe thank u for noticing :)
-    const labels = new Array<string>();
-    if (!collides) labels.push('none');
+    const update = (label: string) => collisionCounts.set(label, (collisionCounts.get(label) ?? 0) + 1);
+    if (!collides) update('none');
     else {
-      labels.push('totalCollisions');
-      if (future) labels.push('totalFuture');
-      else labels.push('totalPast');
-      if (inside) labels.push('totalInside');
-      else labels.push('totalOutside');
-      if (future && inside) labels.push('futureInside');
-      else if (future && !inside) labels.push('futureOutside');
-      else if (!future && inside) labels.push('pastInside');
-      else if (!future && !inside) labels.push('pastOutside');
-      else throw new Error('bruh');
+      update('totalCollisions');
+      update(`total${future ? 'Future' : 'Past'}`);
+      update(`total${inside ? 'Inside' : 'Outside'}`);
+      update(`${future ? 'future' : 'past'}${inside ? 'Inside' : 'Outside'}`);
     }
-    for (const label of labels) collisionCounts.set(label, (collisionCounts.get(label) ?? 0) + 1);
   };
   // const output = new Array<string>();
   for (const [i, left] of hailstones.entries()) {
     for (const right of hailstones.slice(i + 1)) {
       debug(3, { left, right });
+      // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line_segment
       const [v1, v2, v3, v4] = [
         left.position,
         left.position.add(left.velocity),
@@ -92,24 +86,27 @@ const part1 = () => {
         incrementCounter(false, false, false);
         continue;
       }
-      const px = ((v1.x * v2.y - v1.y * v2.x) * (v3.x - v4.x) - (v1.x - v2.x) * (v3.x * v4.y - v3.y * v4.x)) / denominator;
-      const py = ((v1.x * v2.y - v1.y * v2.x) * (v3.y - v4.y) - (v1.y - v2.y) * (v3.x * v4.y - v3.y * v4.x)) / denominator;
-      const leftDotProduct = (px - left.position.x) * left.velocity.x + (py - left.position.y) * left.velocity.y;
-      const rightDotProduct = (px - right.position.x) * right.velocity.x + (py - right.position.y) * right.velocity.y;
+      const collisionX =
+        ((v1.x * v2.y - v1.y * v2.x) * (v3.x - v4.x) - (v1.x - v2.x) * (v3.x * v4.y - v3.y * v4.x)) / denominator;
+      const collsionY = ((v1.x * v2.y - v1.y * v2.x) * (v3.y - v4.y) - (v1.y - v2.y) * (v3.x * v4.y - v3.y * v4.x)) / denominator;
+      // https://en.wikipedia.org/wiki/Dot_product
+      const leftDotProduct = (collisionX - left.position.x) * left.velocity.x + (collsionY - left.position.y) * left.velocity.y;
+      const rightDotProduct =
+        (collisionX - right.position.x) * right.velocity.x + (collsionY - right.position.y) * right.velocity.y;
       const collisionFuture = leftDotProduct >= 0 && rightDotProduct >= 0;
-      const collisionInside = minXy <= px && px <= maxXy && minXy <= py && py <= maxXy;
+      const collisionInside = minXy <= collisionX && collisionX <= maxXy && minXy <= collsionY && collsionY <= maxXy;
       debug(2, {
         left: left.toString(),
         right: right.toString(),
         denominator,
-        px,
-        py,
+        collisionX,
+        collsionY,
         leftDotProduct,
         rightDotProduct,
         collisionFuture,
         collisionInside,
       });
-      // output.push(`${left.id} ${right.id} ${denominator} ${px} ${py}`);
+      // output.push(`${left.id} ${right.id} ${denominator} ${collisionX} ${collsionY}`);
       incrementCounter(true, collisionInside, collisionFuture);
     }
   }
