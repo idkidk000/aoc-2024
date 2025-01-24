@@ -87,9 +87,9 @@ const parseInput = (): Props => {
   };
 };
 
-const lineLineIntersect = (a: Line, b: Line): Coord | undefined => {
+const lineLineIntersect = (a: Line, b: Line, infinite: boolean = false): Coord | undefined => {
   // pain
-  //TODO: add to template
+  // TODO: add to template
   const [x1, y1, x2, y2] = [a.a.x, a.a.y, a.b.x, a.b.y];
   const [x3, y3, x4, y4] = [b.a.x, b.a.y, b.b.x, b.b.y];
   const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
@@ -97,13 +97,55 @@ const lineLineIntersect = (a: Line, b: Line): Coord | undefined => {
   const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
   const u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denominator;
   debug(4, { a, b, denominator, t, u });
-  if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+  if (infinite || (t >= 0 && t <= 1 && u >= 0 && u <= 1)) return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
   return undefined;
+};
+
+const isInside = (coord: Coord, line: Line) => {
+  const result = (line.a.x - line.b.x) * (coord.y - line.b.y) - (line.a.y - line.b.y) * (coord.x - line.b.x) <= 0;
+  debug(4, 'isInside', { coord, line, result });
+  return result;
+};
+/*
+  https://github.com/mhdadk/sutherland-hodgman/blob/main/SH.py#L172
+  disdain for those who don't use type annotations
+  p1 = line.b
+  p2 = line.a
+  q  = coord
+    def is_inside(self,p1,p2,q):
+        R = (p2[0] - p1[0]) * (q[1] - p1[1]) - (p2[1] - p1[1]) * (q[0] - p1[0])
+        if R <= 0:
+            return True
+        else:
+            return False
+*/
+
+const clipPolygon = (subject: Array<Coord>, clip: Array<Coord>) => {
+  // https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm
+  const output = [...subject];
+  for (let i = 0; i < clip.length; ++i) {
+    const clipEdge: Line = { a: clip[i], b: clip[(i + 1) % clip.length] };
+    const input = [...output];
+    output.splice(0, output.length);
+    debug(2, 'top', { i, clipEdge, input, output });
+    for (let j = 0; j < input.length; ++j) {
+      const currentPoint = input[j];
+      const prevPoint = input[(j - 1 + input.length) % input.length];
+      const intersectionPoint = lineLineIntersect({ a: prevPoint, b: currentPoint }, clipEdge, true);
+      if (isInside(currentPoint, clipEdge)) {
+        if (!isInside(prevPoint, clipEdge) && typeof intersectionPoint !== 'undefined') output.push(intersectionPoint);
+        output.push(currentPoint);
+      } else if (isInside(prevPoint, clipEdge) && typeof intersectionPoint !== 'undefined') output.push(intersectionPoint);
+      debug(3, { j, currentPoint, prevPoint, clipEdge, intersectionPoint, output });
+    }
+    debug(2, 'bottom', { i, input, output });
+  }
+  return output;
 };
 
 const solve = ({ sensors, minX, maxX }: Props, searchY: number) => {
   /*
-    perform a line/line intersect with checkLine and each sensors bounding lines
+    perform a line/line intersect with checkLine and each sensors' bounding lines
     add impossible ranges
     merge ranges and subtract known beacons
   */
@@ -129,8 +171,8 @@ const solve = ({ sensors, minX, maxX }: Props, searchY: number) => {
   for (let i = 0; i < ranges.length - 1; 0) {
     const [a, b] = [ranges[i], ranges[i + 1]];
     if (a.to >= b.from - 1) {
-      a.to = Maths.max(a.to, b.to);
-      ranges.splice(i + 1, 1); //modifying an array while iterating over it is good actually
+      a.to = Maths.max(a.to, b.to); // b may have a greater from but a lower to
+      ranges.splice(i + 1, 1); // modifying an array while iterating over it is good actually
     } else ++i;
   }
   debug(3, 'merged', { ranges });
@@ -165,14 +207,37 @@ const part1 = () => {
 };
 
 const part2 = () => {
-  /*
-    FIXME: this is a bad solution. we already have min/max x/y and each sensors bounds. so we can use an algo to determine areas of the min/max x/y box which aren't obscured by any of the sensors
-      https://en.wikipedia.org/wiki/Weiler%E2%80%93Atherton_clipping_algorithm
-      https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm
-  */
   const props = parseInput();
-  for (let y = 0; y <= 4_000_000; ++y) {
-    if (y % 100_000 === 0) debug(1, Maths.round((1000 / 4_000_000) * y) / 10, '%');
+  const [minXy, maxXy] = [0, 4_000_000];
+  const candidates = new Array<Coord>();
+  const allBoundingLines = props.sensors.flatMap((sensor) =>
+    sensor.bounds.map<Line>((a, i, arr) => ({ a, b: arr[(i + 1) % 4] }))
+  );
+  for (const [i, left] of allBoundingLines.entries()) {
+    for (const right of allBoundingLines.slice(i + 1)) {
+      const intersection = lineLineIntersect(left, right);
+      if (
+        typeof intersection === 'undefined' ||
+        intersection.x < minXy ||
+        intersection.x > maxXy ||
+        intersection.y < minXy ||
+        intersection.y > maxXy ||
+        intersection.x % 1 !== 0 ||
+        intersection.y % 1 !== 0
+      )
+        continue;
+      const overlappingSensorCount = props.sensors.filter(
+        (item) => Maths.abs(item.position.x - intersection.x) + Maths.abs(item.position.y - intersection.y) <= item.radius
+      ).length;
+      if (overlappingSensorCount > 2) continue;
+      candidates.push(intersection);
+    }
+  }
+  debug(
+    1,
+    candidates.toSorted((a, b) => a.x - b.x || a.y - b.y)
+  ); // i hoped for four entries with our target in the center, this this is fast and trivial to brute force
+  for (const y of new Set(candidates.map((item) => item.y))) {
     const { possible } = solve(props, y);
     if (possible.length > 0) {
       debug(1, { y, possible });
@@ -186,3 +251,28 @@ const part2 = () => {
 
 if (args.part1) part1();
 if (args.part2) part2();
+if (!args.part1 && !args.part2) {
+  /*
+   const subject = new Array<Coord>({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 });
+  // clip goes beyond subject - works
+  // const clip = new Array<Coord>({ x: 5, y: -1 }, { x: 11, y: 5 }, { x: 5, y: 11 }, { x: -1, y: 5 });
+  // clip coords directly intersect subject lines - works
+  // const clip = new Array<Coord>({ x: 5, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 5 });
+  // clip is contained within subject - works
+  const clip = new Array<Coord>({ x: 5, y: 1 }, { x: 9, y: 5 }, { x: 5, y: 9 }, { x: 1, y: 5 });
+  const clipped = clipPolygon(subject, clip);
+  debug(1, { subject, clip, clipped });
+   */
+  /*
+    TODO: make a unionPolygons function based on clipPolygon.
+    outer loop over left edges, inner loop over right edges, toogle a bool on intersect
+    when true, add the intersection point and keep adding right edges to output
+    when false, add intersection point and left edges
+    if no intersections, put right back on the queue, since we know that they do all eventually overlap
+    idk how to handle holes though. maybe left is an array of polygons which each have an invert boolean?
+  */
+  /*
+    actually in the tradition of writing a load of code and then not using it, it might be easier to find all the sensor bounds line intersections, exclude those which are within radius of any other sensor, and exclude those which are outside of 0-4m.
+    there should be four. inside should be our target
+  */
+}
