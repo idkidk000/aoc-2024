@@ -101,48 +101,6 @@ const lineLineIntersect = (a: Line, b: Line, infinite: boolean = false): Coord |
   return undefined;
 };
 
-const isInside = (coord: Coord, line: Line) => {
-  const result = (line.a.x - line.b.x) * (coord.y - line.b.y) - (line.a.y - line.b.y) * (coord.x - line.b.x) <= 0;
-  debug(4, 'isInside', { coord, line, result });
-  return result;
-};
-/*
-  https://github.com/mhdadk/sutherland-hodgman/blob/main/SH.py#L172
-  disdain for those who don't use type annotations
-  p1 = line.b
-  p2 = line.a
-  q  = coord
-    def is_inside(self,p1,p2,q):
-        R = (p2[0] - p1[0]) * (q[1] - p1[1]) - (p2[1] - p1[1]) * (q[0] - p1[0])
-        if R <= 0:
-            return True
-        else:
-            return False
-*/
-
-const clipPolygon = (subject: Array<Coord>, clip: Array<Coord>) => {
-  // https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm
-  const output = [...subject];
-  for (let i = 0; i < clip.length; ++i) {
-    const clipEdge: Line = { a: clip[i], b: clip[(i + 1) % clip.length] };
-    const input = [...output];
-    output.splice(0, output.length);
-    debug(2, 'top', { i, clipEdge, input, output });
-    for (let j = 0; j < input.length; ++j) {
-      const currentPoint = input[j];
-      const prevPoint = input[(j - 1 + input.length) % input.length];
-      const intersectionPoint = lineLineIntersect({ a: prevPoint, b: currentPoint }, clipEdge, true);
-      if (isInside(currentPoint, clipEdge)) {
-        if (!isInside(prevPoint, clipEdge) && typeof intersectionPoint !== 'undefined') output.push(intersectionPoint);
-        output.push(currentPoint);
-      } else if (isInside(prevPoint, clipEdge) && typeof intersectionPoint !== 'undefined') output.push(intersectionPoint);
-      debug(3, { j, currentPoint, prevPoint, clipEdge, intersectionPoint, output });
-    }
-    debug(2, 'bottom', { i, input, output });
-  }
-  return output;
-};
-
 const solve = ({ sensors, minX, maxX }: Props, searchY: number) => {
   /*
     perform a line/line intersect with checkLine and each sensors' bounding lines
@@ -251,28 +209,3 @@ const part2 = () => {
 
 if (args.part1) part1();
 if (args.part2) part2();
-if (!args.part1 && !args.part2) {
-  /*
-   const subject = new Array<Coord>({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 });
-  // clip goes beyond subject - works
-  // const clip = new Array<Coord>({ x: 5, y: -1 }, { x: 11, y: 5 }, { x: 5, y: 11 }, { x: -1, y: 5 });
-  // clip coords directly intersect subject lines - works
-  // const clip = new Array<Coord>({ x: 5, y: 0 }, { x: 10, y: 5 }, { x: 5, y: 10 }, { x: 0, y: 5 });
-  // clip is contained within subject - works
-  const clip = new Array<Coord>({ x: 5, y: 1 }, { x: 9, y: 5 }, { x: 5, y: 9 }, { x: 1, y: 5 });
-  const clipped = clipPolygon(subject, clip);
-  debug(1, { subject, clip, clipped });
-   */
-  /*
-    TODO: make a unionPolygons function based on clipPolygon.
-    outer loop over left edges, inner loop over right edges, toogle a bool on intersect
-    when true, add the intersection point and keep adding right edges to output
-    when false, add intersection point and left edges
-    if no intersections, put right back on the queue, since we know that they do all eventually overlap
-    idk how to handle holes though. maybe left is an array of polygons which each have an invert boolean?
-  */
-  /*
-    actually in the tradition of writing a load of code and then not using it, it might be easier to find all the sensor bounds line intersections, exclude those which are within radius of any other sensor, and exclude those which are outside of 0-4m.
-    there should be four. inside should be our target
-  */
-}
