@@ -42,7 +42,7 @@ const parseInput = () =>
       ])
   );
 
-const solve = (nodeMap: Map<string, Node>, start: string = 'AA', moves: number = 30) => {
+const solve = (nodeMap: Map<string, Node>, start: string = 'AA', moves: number = 30, walkerCount: number = 1) => {
   const nodesWithValue = nodeMap
     .entries()
     .filter(([k, v]) => k === start || v.flow > 0)
@@ -50,20 +50,31 @@ const solve = (nodeMap: Map<string, Node>, start: string = 'AA', moves: number =
     .toArray()
     .toSorted((a, b) => a.localeCompare(b));
   const shortestPaths = new Map<string, Map<string, number>>(nodesWithValue.map((item) => [item, new Map<string, number>()]));
-  //FIXME: this part is quite slow
-  for (const left of nodesWithValue) {
-    for (const right of nodesWithValue) {
-      if (left === right || shortestPaths.get(left)!.has(right)) continue;
-      const queue = new Array<{ node: string; cost: number }>();
+  // const walked = new Set<string>();
+  const queue = new Array<{ node: string; cost: number }>();
+  const nodeCosts = new Map<string, number>();
+  for (const [i, left] of nodesWithValue.entries()) {
+    for (const right of nodesWithValue.slice(i + 1)) {
       let shortest = Infinity;
+      // walked.clear();
+      // walked.add(left);
+      nodeCosts.clear();
+      nodeCosts.set(left, 0);
       queue.push({ node: left, cost: 0 });
       while (queue.length) {
-        const { node, cost } = queue.shift()!;
-        if (cost >= shortest) continue;
+        const { node, cost } = queue.pop()!;
         if (node === right) {
           shortest = Maths.min(shortest, cost);
+          continue;
         }
+        if (cost + 1 >= shortest) continue;
+        if ((nodeCosts.get(node) ?? Infinity) < cost) continue;
+        nodeCosts.set(node, cost);
+        // if (walked.has(node)) continue;
+        // walked.add(node);
         for (const neighbour of nodeMap.get(node)!.neighbours) {
+          // if (walked.has(neighbour)) continue;
+          // walked.add(neighbour);
           queue.push({ node: neighbour, cost: cost + 1 });
         }
       }
@@ -74,10 +85,22 @@ const solve = (nodeMap: Map<string, Node>, start: string = 'AA', moves: number =
   }
   debug(1, { shortestPaths });
 
+  interface Walker {
+    node: string;
+    travelRemain: number;
+  }
+
   // recursive dfs with higher (next node value * remaining) prioritised. though i seem to have an error somewhere because the best score isn't first
-  // p2 is a bit of brain melter. i think the "decrement remain by nextNode.path" optimisation will have to go and the two active nodes will need to have a position, destination, and moves remaining to get there. other state can still be shared
+  /* p2 is a bit of brain melter
+   * remove the node param, reaplce with walkers:Array<walker>
+   * decrement travelRemain no each move
+   * "decrement remain by nextNode.path" optimisation will have to go
+   * "nodeState.set(true); walk; nodeState.set(false)" is going to be a problem i think
+   * in fact, if both walkers are able to switch a valve at the same time, i need to do one, the other, then both, and set false again after
+   *
+   */
   const nodeState = new Map<string, boolean>(nodesWithValue.map((item) => [item, false]));
-  let highestScore = -Infinity;
+  let highestScore = -Infinity; //TODO: factor this out and return the accumulated score
   const walk = (node: string, remain: number, score: number = 0, scorePerMove: number = 0) => {
     if (remain === 1) {
       if (score + scorePerMove > highestScore) {
@@ -97,11 +120,11 @@ const solve = (nodeMap: Map<string, Node>, start: string = 'AA', moves: number =
       for (const nextNode of nodeState
         .entries()
         .filter(([k, v]) => !v && k !== node)
-        .map(([k, _]) => ({ node: k, flow: nodeMap.get(k)!.flow, path: shortestPaths.get(node)!.get(k)! }))
-        .filter((item) => item.flow > 0 && item.path < remain - 1)
+        .map(([k, _]) => ({ node: k, flow: nodeMap.get(k)!.flow, cost: shortestPaths.get(node)!.get(k)! }))
+        .filter((item) => item.flow > 0 && item.cost < remain - 1)
         .toArray()
-        .sort((a, b) => (remain - b.path) * b.flow - (remain - a.path) * a.flow)) {
-        walk(nextNode.node, remain - nextNode.path, score + scorePerMove * nextNode.path, scorePerMove);
+        .sort((a, b) => (remain - b.cost) * b.flow - (remain - a.cost) * a.flow)) {
+        walk(nextNode.node, remain - nextNode.cost, score + scorePerMove * nextNode.cost, scorePerMove);
       }
       // ...so also test just waiting here until the end
       walk(node, 1, score + scorePerMove * (remain - 1), scorePerMove);
