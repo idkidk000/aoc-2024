@@ -75,13 +75,13 @@ const parseInput = () => {
         nodeCosts.set(node, cost);
         for (const neighbour of allNodes.get(node)!.neighbours) queue.push({ node: neighbour, cost: cost + 1 });
       }
-      debug(1, { left, right, shortest });
+      debug(3, { left, right, shortest });
       // start node has no flow value - don't add paths back to it
       if (right !== start) nodeMap.get(left)!.neighbours.set(right, shortest);
       if (left !== start) nodeMap.get(right)!.neighbours.set(left, shortest);
     }
   }
-  debug(1, { nodeMap });
+  debug(3, { nodeMap });
 
   return nodeMap;
 };
@@ -105,8 +105,10 @@ const solve = (
       return highestScore;
     } else {
       // wait here until the end
-      let highestScore = walk(node, 1, score);
+      let highestScore = score;
       // walk each node with a closed valved which can be reached and opened in remaining moves
+      // casting as array and sorting highest gain first is slower
+      // walking only top n / gain>=mean/median prunes paths which are initially bad but become optimal
       for (const nextNode of nodeState
         .entries()
         .filter(([k, v]) => !v && k !== node)
@@ -131,7 +133,7 @@ const part2 = () => {
   /*
     i can only think of brute force solves
 
-    try all possible starting combinations of nodeState (start+15 (2**15=32768) nodes) with 26 moves and add the opposite states' result. p2 result would be max value
+    try all possible starting combinations of nodeState (start+15 (2**15=32768) nodes) with 26 moves and add the opposite states' result. p2 result would be max value. i don't think there's a memoisation fix since the initial nodeState (and therfore the valves which may not be opened) are unique for each run. maybe the search scope can be narrowed or bad paths can be pruned early
 
     refactor solve.walk to handle multiple walkers, remove all optimisations (move-based loop is really slow), switch back to a queue (nodeState will make it really slow and use a lot of memory), and push each combination of each walker's possible moves to the queue on each turn (exponential queue growth)
 
@@ -145,7 +147,7 @@ const part2 = () => {
     for (const [j, node] of nodeArr.entries()) nodeState.set(node, ((1 << (j - 1)) & i) > 0);
     debug(2, { i, nodeState, upper });
     const result = solve(nodeMap, 26, nodeState);
-    if (i % 1000 === 0) debug(1, { i, upper, result });
+    if (i % 1000 === 0) debug(1, Maths.round((1000 / upper) * i) / 10, '%', { i, upper, result });
     resultMap.set(i, result);
   }
   let highestScore = -Infinity;
