@@ -86,11 +86,13 @@ const parseInput = () => {
   return nodeMap;
 };
 
-const solve = (nodeMap: Map<string, Node>) => {
-  const start = 'AA';
-  const moves = 30;
+const solve = (
+  nodeMap: Map<string, Node>,
+  moves = 30,
   // set all valves to closed
-  const nodeState = new Map<string, boolean>(nodeMap.keys().map((item) => [item, false]));
+  nodeState: Map<string, boolean> = new Map<string, boolean>(nodeMap.keys().map((item) => [item, false]))
+) => {
+  const start = 'AA';
   // recursive dfs since there's a lot of state
   const walk = (node: string, remain: number, score: number = 0): number => {
     if (remain === 1) return score;
@@ -120,14 +122,39 @@ const solve = (nodeMap: Map<string, Node>) => {
 };
 
 const part1 = () => {
-  console.log('part 1 v1:', solve(parseInput()));
-  // console.log('part 1 v2:', solve2(parseInput()));
+  console.log('part 1:', solve(parseInput()));
   // 1474
 };
 
 const part2 = () => {
-  /*   const result = solve(parseInput(), 26, 2);
-  console.log('part 2:', result); */
+  const nodeMap = parseInput();
+  /*
+    i can only think of brute force solves
+
+    try all possible starting combinations of nodeState (start+15 (2**15=32768) nodes) with 26 moves and add the opposite states' result. p2 result would be max value
+
+    refactor solve.walk to handle multiple walkers, remove all optimisations (move-based loop is really slow), switch back to a queue (nodeState will make it really slow and use a lot of memory), and push each combination of each walker's possible moves to the queue on each turn (exponential queue growth)
+
+    i don't like either
+  */
+  const resultMap = new Map<number, number>();
+  const nodeState = new Map<string, boolean>(nodeMap.keys().map((item) => [item, false]));
+  const nodeArr = nodeMap.keys().toArray();
+  const upper = (1 << (nodeArr.length - 1)) - 1;
+  for (let i = 0; i <= upper; ++i) {
+    for (const [j, node] of nodeArr.entries()) nodeState.set(node, ((1 << (j - 1)) & i) > 0);
+    debug(2, { i, nodeState, upper });
+    const result = solve(nodeMap, 26, nodeState);
+    if (i % 1000 === 0) debug(1, { i, upper, result });
+    resultMap.set(i, result);
+  }
+  let highestScore = -Infinity;
+  for (let i = 0; i <= upper; ++i) {
+    highestScore = Maths.max(highestScore, resultMap.get(i)! + resultMap.get(upper ^ i)!);
+  }
+  console.log('part 2:', highestScore);
+
+  // 2100
 };
 
 if (args.part1) part1();
