@@ -2,23 +2,16 @@
 // #region base aoc template
 declare global {
   interface Math {
-    clamp(value: number, min: number, max: number): number;
     gcd(left: number, right: number): number;
     lcm(values: number[]): number;
-    pmod(value: number, mod: number): number;
   }
 }
 
-Math.clamp = (value: number, min: number, max: number) => Math.max(Math.min(value, max), min);
 Math.gcd = (left: number, right: number) => {
   while (right !== 0) [left, right] = [right, left % right];
   return left;
 };
 Math.lcm = (values: number[]) => values.reduce((acc, item) => (acc * item) / Math.gcd(acc, item), 1);
-Math.pmod = (value: number, mod: number) => {
-  const result = value % mod;
-  return result >= 0 ? result : result + mod;
-};
 
 const Maths = Math;
 
@@ -74,8 +67,7 @@ const parseInput = () => {
       raw: rawRock.map((row) => row.join('')),
     };
     for (const [y, row] of rawRock.entries()) {
-      // flip y so coords can be added
-      //FIXME: this seems backwards
+      // flip y so 0 is on the bottom and coords can just be added
       for (const [x, char] of row.entries()) if (char === '#') rock.cells.push({ x, y: rawRock.length - y - 1 });
     }
     rocks.push(rock);
@@ -83,23 +75,30 @@ const parseInput = () => {
   return { jets, rocks };
 };
 
-const simulate = (jets: string, rocks: Array<Rock>, dropCount: number, hook?: (dropNum: number, maxY: number) => boolean) => {
+const simulate = (
+  jets: string,
+  rocks: Array<Rock>,
+  dropCount: number,
+  hook?: (data: { dropNum: number; jetIx: number; height: number; rockId: number; maxY: number }) => boolean
+) => {
   const cavernWidth = 7;
   const startXOffset = 2;
   const startYOffset = 3;
-  let maxY = -1; //the examples are kind of fucky
+  let maxY = -1;
   // y=0 bottom
-  // lcm of jets length, rocks length, and maxY delta cycle length still means having to drop ~17m rocks. which is ~85m occupied cells. which makes sets very sad
-  const occupied = new Set<number>();
+  /*   const occupied = new Set<number>();
   const hashCoord = (coord: Coord) => coord.y + (coord.x << 28);
   const isOccupied = (coord: Coord) => occupied.has(hashCoord(coord));
-  const setOccupied = (coord: Coord) => occupied.add(hashCoord(coord));
-  /* const occupied = new Map<number, number>();
-  //BUG somewhere in this bc my p1 answer is wrong
+  const setOccupied = (coord: Coord) => occupied.add(hashCoord(coord)); */
+  // denser packing so we can simulate more rows before hitting max map/set size
+  const occupied = new Map<number, number>();
   const hashCoord = (coord: Coord) => {
-    // return { key: coord.y, val: coord.x + 1 };
-    const [yPack, xPack] = [6, 4];
-    return { key: Maths.floor(coord.y / yPack), val: (coord.x + 1) << ((coord.y % yPack) * xPack) };
+    const dataWidth = 30; //might switch to bigint
+    const rowsPerEntry = Maths.floor(dataWidth / cavernWidth);
+    return {
+      key: Maths.floor(coord.y / rowsPerEntry),
+      val: 1 << (coord.x + (coord.y % rowsPerEntry) * cavernWidth),
+    };
   };
   const isOccupied = (coord: Coord) => {
     const { key, val } = hashCoord(coord);
@@ -109,7 +108,7 @@ const simulate = (jets: string, rocks: Array<Rock>, dropCount: number, hook?: (d
     const { key, val } = hashCoord(coord);
     if (!occupied.has(key)) occupied.set(key, val);
     else occupied.set(key, occupied.get(key)! | val);
-  }; */
+  };
   const addCoord = (left: Coord, right: Coord, xExtra?: number, yExtra?: number) => ({
     x: left.x + right.x + (xExtra ?? 0),
     y: left.y + right.y + (yExtra ?? 0),
@@ -165,10 +164,14 @@ const simulate = (jets: string, rocks: Array<Rock>, dropCount: number, hook?: (d
         break;
       }
     }
-    if (typeof hook !== 'undefined' && hook(dropNum, maxY)) break;
+    if (
+      typeof hook !== 'undefined' &&
+      hook({ dropNum, jetIx: jetIx - 1, height: maxY + 1, rockId: rocks.length % dropNum, maxY })
+    )
+      break;
   }
 
-  return maxY + 1;
+  return maxY + 1; //grid is 0-based
 };
 
 const part1 = () => {
@@ -181,14 +184,69 @@ const part1 = () => {
 
 const part2 = () => {
   const { jets, rocks } = parseInput();
-  const sillyNumber = 1_000_000_000_000;
+  const lcm = Maths.lcm([jets.length, rocks.length]);
+  /*
+  // does jets repeat
+  // no it's a prime and any substring matches are false positives
+  for (let i = 0; i < Maths.floor(jets.length / 2); ++i) {
+    const search = jets.slice(0, i);
+    const index = jets.indexOf(search, i);
+    if (index > -1) {
+      console.log({ i, index, len: jets.length })
+    };
+  }
+ */
+
+  // does the rock maxY delta fall into a predictable pattern on or after lcm (anything before is a false positive)
+  // yes 50546 (lcm+1)=2. still could be a false positive though
+  // it was :|
+  const resultMap = new Map<string, number>(); //slow but idc actually
+  let prevMaxY = 0;
+  console.log({ lcm });
+  simulate(jets, rocks, lcm * 1000, (data) => {
+    const key = `${data.rockId} ${data.jetIx} ${data.maxY - prevMaxY}`;
+    if (resultMap.has(key)) {
+      console.log({ data, prev: resultMap.get(key)! });
+      return true; //break
+    }
+    resultMap.set(key, data.dropNum);
+
+    // const delta=
+    // const delta = (maxY - prevMaxY).toString();
+    // if (delta.length !== 1) throw new Error(delta);
+    // deltas += delta;
+    // if (dropNum > lcm) {
+    //   const search = deltas.slice(-lcm);
+    //   const index = deltas.indexOf(search);
+    //   console.log({ dropNum, index });
+    //   // dropNum 1915-2014 result matches 175-274 - cycle of 1740
+    //   if (index < dropNum - lcm) return true;
+    // }
+    // prevMaxY = maxY;
+    prevMaxY = data.maxY;
+    return false;
+  });
+  /*   console.log({
+    height1: simulate(jets, rocks, 1) + 1,
+    heightLcm: simulate(jets, rocks, lcm) + 1,
+    heightLcm1: simulate(jets, rocks, lcm + 1) + 1,
+    heightLcm2: simulate(jets, rocks, lcm * 2) + 1,
+    heightLcm21: simulate(jets, rocks, lcm * 2 + 1) + 1,
+    heightLcm3: simulate(jets, rocks, lcm * 3) + 1,
+    heightLcm31: simulate(jets, rocks, lcm * 3 + 1) + 1,
+    heightLc4: simulate(jets, rocks, lcm * 4) + 1,
+    heightLc41: simulate(jets, rocks, lcm * 4 + 1) + 1,
+  });
+  return; */
+
+  /*   const sillyNumber = 1_000_000_000_000;
   const lcm = Maths.lcm([jets.length, rocks.length, 1740]);
   // 17558340 rocks results in FAR too many entries for a set. i'll have to rethink storage
   console.log(lcm);
   console.log('lcmHeight', simulate(jets, rocks, lcm));
   console.log('lcm2Height', simulate(jets, rocks, lcm * 2));
   console.log('lcm3Height', simulate(jets, rocks, lcm * 3));
-  console.log('lcm4Height', simulate(jets, rocks, lcm * 4));
+  console.log('lcm4Height', simulate(jets, rocks, lcm * 4)); */
   /*   const lcmHeight = simulate(jets, rocks, lcm);
   // BUG: these are not multiples of lcmHeight. 2 is +2, 3 is +4, 4 is +10
   // they're also not multiples of lcm2-lcm
