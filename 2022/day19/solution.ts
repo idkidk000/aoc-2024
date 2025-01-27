@@ -81,20 +81,13 @@ const solve = (blueprint: Blueprint, moves: number) => {
     obsidian: Maths.min(resources.obsidian, resourceLimits.obsidian * remaining),
     geode: resources.geode,
   });
-  const width = 8n; //255 maxval should be fine
   const dfs = (resources: Inventory, robots: Inventory, remaining: number): number => {
     if (remaining === 0) return resources.geode;
     // bitwise ops on Number don't work beyond 31 bits. unfortunately the typecasting slows things down
+    // this is about 30% faster on p2 than casting each field as a BigInt separately and using 8 bits per field
     const cacheKey =
-      BigInt(resources.ore) +
-      (BigInt(resources.clay) << (width * 1n)) +
-      (BigInt(resources.obsidian) << (width * 2n)) +
-      (BigInt(resources.geode) << (width * 3n)) +
-      (BigInt(robots.ore) << (width * 4n)) +
-      (BigInt(robots.clay) << (width * 5n)) +
-      (BigInt(robots.obsidian) << (width * 6n)) +
-      (BigInt(robots.geode) << (width * 7n)) +
-      (BigInt(remaining) << (width * 8n));
+      BigInt(resources.ore + (resources.clay << 8) + (resources.obsidian << 16) + (resources.geode << 24)) +
+      (BigInt(robots.ore + (robots.clay << 6) + (robots.obsidian << 12) + (robots.geode << 18) + (remaining << 24)) << 32n);
     if (cache.has(cacheKey)) return cache.get(cacheKey)!;
     // build nothing
     let maxGeodes = dfs(incrementResources(resources, robots, remaining), robots, 0);
