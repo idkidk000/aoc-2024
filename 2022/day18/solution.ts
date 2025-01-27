@@ -38,6 +38,12 @@ const D6 = new Array<Vec3>(
   { x: 0, y: 0, z: -1 },
   { x: 0, y: 0, z: 1 }
 );
+enum Occupied {
+  Unknown = 0,
+  Lava = 1,
+  External = 2,
+  Internal = 3,
+}
 
 const parseInput = () =>
   Deno.readTextFileSync(args.filename)
@@ -57,28 +63,75 @@ const solve = (cubes: Array<Vec3>, pruneInternal = false) => {
     [Infinity, -Infinity]
   );
   const width = Maths.ceil(Maths.log2(maxXyz - minXyz));
-  const occupied = new Set<number>();
-  const hashVec3 = (vec3: Vec3) => ((vec3.x - minXyz) << (width * 2)) + ((vec3.y - minXyz) << width) + (vec3.z - minXyz);
-  const setOccupied = (vec3: Vec3) => occupied.add(hashVec3(vec3));
-  const isOccupied = (vec3: Vec3) => occupied.has(hashVec3(vec3));
+  const occupied = new Map<number, Occupied>();
+  const packVec3 = (vec3: Vec3) => ((vec3.x - minXyz) << (width * 2)) + ((vec3.y - minXyz) << width) + (vec3.z - minXyz);
+  const unpackVec3 = (value: number): Vec3 => ({
+    x: (value >> (width * 2)) + minXyz,
+    y: ((value >> width) & ((1 << width) - 1)) + minXyz,
+    z: (value & ((1 << width) - 1)) + minXyz,
+  });
+  const setOccupied = (vec3: Vec3, type: Occupied) => occupied.set(packVec3(vec3), type);
+  const getOccupied = (vec3: Vec3) => occupied.get(packVec3(vec3)) ?? Occupied.Unknown;
   const addVec3 = (left: Vec3, right: Vec3): Vec3 => ({ x: left.x + right.x, y: left.y + right.y, z: left.z + right.z });
   const oob = (vec3: Vec3) =>
     vec3.x < minXyz || vec3.x > maxXyz || vec3.y < minXyz || vec3.y > maxXyz || vec3.z < minXyz || vec3.z > maxXyz;
 
-  // set occupied
-  for (const cube of cubes) setOccupied(cube);
-
   /*
-    3d hole detection is hard actually
-    as a preprocessing step, need to determine which unoccupied areas are internal (i.e. air pockets) and which are external
-    i have a horrible feeling that it's going to be a walk
-    will also need to change occupied to a map with an enum val
+  // test i haven't messed up vec3 unpacking
+  for (const cube of cubes) {
+    const packed = packVec3(cube);
+    const unpacked = unpackVec3(packed);
+    debug(1, { cube, packed, unpacked });
+    if (cube.x !== unpacked.x || cube.y !== unpacked.y || cube.z !== unpacked.z) throw new Error('bruh');
+  }
   */
+
+  // set lava occupied
+  for (const cube of cubes) setOccupied(cube, Occupied.Lava);
+
+  // loop over xyz
+  // walk Occupied.Unknown regions
+  // add region to a set
+  // keep testing for external
+  // once exhaused, set all walked cells to Occupied.(In|Ex)ternal
+  // could factor out unnecessary unpacking and repacking
+  const queue = new Array<Vec3>();
+  const walked = new Set<number>();
+  const addWalked = (vec3: Vec3) => walked.add(packVec3(vec3));
+  const isWalked = (vec3: Vec3) => walked.has(packVec3(vec3));
+  for (let x = minXyz; x <= maxXyz; ++x) {
+    for (let y = minXyz; y <= maxXyz; ++y) {
+      for (let z = minXyz; z <= maxXyz; ++z) {
+        if (getOccupied({ x, y, z }) !== Occupied.Unknown) continue;
+        walked.clear();
+        queue.push({ x, y, z });
+        addWalked({ x, y, z });
+        let external = [x, y, z].some((item) => [minXyz, maxXyz].includes(item));
+        while (queue.length > 0) {
+          const position = queue.pop()!; // bfs/dfs shouldn't make much difference
+          for (const nextPosition of D6.map((offset) => addVec3(position, offset))) {
+            if (oob(nextPosition) || isWalked(nextPosition) || getOccupied(nextPosition) !== Occupied.Unknown) continue;
+            addWalked(nextPosition);
+            queue.push(nextPosition);
+            if (!external)
+              external = [nextPosition.x, nextPosition.y, nextPosition.z].some((item) => [minXyz, maxXyz].includes(item));
+          }
+        }
+        for (const item of walked.keys().map((item) => unpackVec3(item))) {
+          setOccupied(item, external ? Occupied.External : Occupied.Internal);
+        }
+      }
+    }
+  }
 
   // loop over cubes and accumulate surface area
   let surfaceArea = 0;
   for (const cube of cubes) {
-    const faceCount = D6.map((item) => addVec3(item, cube)).reduce((acc, item) => acc + (isOccupied(item) ? 0 : 1), 0);
+    const faceCount = D6.map((item) => addVec3(item, cube)).reduce(
+      (acc, item) =>
+        acc + ((pruneInternal ? [Occupied.Lava, Occupied.Internal] : [Occupied.Lava]).includes(getOccupied(item)) ? 0 : 1),
+      0
+    );
     debug(1, { cube, faceCount });
     surfaceArea += faceCount;
   }
@@ -96,6 +149,7 @@ const part2 = () => {
   const cubes = parseInput();
   const result = solve(cubes, true);
   console.log('part 2:', result);
+  // 2052
 };
 
 if (args.part1) part1();
