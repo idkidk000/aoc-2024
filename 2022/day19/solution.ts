@@ -49,7 +49,11 @@ const parseInput = () =>
     }))
     .toArray();
 
-const solve = (blueprint: Blueprint) => {
+const solve = (blueprint: Blueprint, moves: number) => {
+  /*
+    very heavily based on https://github.com/hyperneutrino/advent-of-code/blob/main/2022/day19p1.py
+    i'd already tried turn-based recursive dfs and stack. this is much better
+  */
   interface Inventory {
     ore: number;
     clay: number;
@@ -77,7 +81,7 @@ const solve = (blueprint: Blueprint) => {
     obsidian: Maths.min(resources.obsidian, resourceLimits.obsidian * remaining),
     geode: resources.geode,
   });
-  const width = 8n; //255 maxval should be fine. i'm sure p2 won't be even worse. that never happens.
+  const width = 8n; //255 maxval should be fine
   const dfs = (resources: Inventory, robots: Inventory, remaining: number): number => {
     if (remaining === 0) return resources.geode;
     // bitwise ops on Number don't work beyond 31 bits. unfortunately the typecasting slows things down
@@ -116,21 +120,28 @@ const solve = (blueprint: Blueprint) => {
     cache.set(cacheKey, maxGeodes);
     return maxGeodes;
   };
-  const result = dfs({ clay: 0, geode: 0, obsidian: 0, ore: 0 }, { clay: 0, geode: 0, obsidian: 0, ore: 1 }, 24);
+  const result = dfs({ clay: 0, geode: 0, obsidian: 0, ore: 0 }, { clay: 0, geode: 0, obsidian: 0, ore: 1 }, moves);
   debug(1, { blueprint, result });
   return result;
 };
 
 const part1 = () => {
   const blueprints = parseInput();
-  const resultsMap = new Map<number, number>(blueprints.map((item) => [item.id, solve(item)]));
+  const resultsMap = new Map<number, number>(blueprints.map((item) => [item.id, solve(item, 24)]));
   console.log(
     'part 1:',
     resultsMap.entries().reduce((acc, [k, v]) => acc + k * v, 0)
   );
 };
 
-const part2 = () => {};
+const part2 = () => {
+  const blueprints = parseInput();
+  const result = blueprints
+    .filter((_, i) => i < 3)
+    .map((item) => solve(item, 32))
+    .reduce((acc, item) => acc * item, 1);
+  console.log('part 2:', result);
+};
 
 if (args.part1) part1();
 if (args.part2) part2();
