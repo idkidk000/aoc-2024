@@ -36,17 +36,17 @@ const debug = (level: number, ...data: any[]) => {
 const args = new Args();
 // #endregion
 
-const parseInput = () =>
+interface Entry {
+  ix: number;
+  value: number;
+}
+
+const parseInput = (): Array<Entry> =>
   // values aren't unique so also store the original index
   Deno.readTextFileSync(args.filename)
     .split('\n')
     .filter((line) => line.trim())
     .map((line, ix) => ({ ix, value: Number(line) }));
-
-interface Entry {
-  ix: number;
-  value: number;
-}
 
 const mix = (input: Array<Entry>, iterations = 1): number => {
   debug(1, 'start', input);
@@ -71,8 +71,8 @@ const mix = (input: Array<Entry>, iterations = 1): number => {
     output[(index0 + 2000) % output.length].value,
     output[(index0 + 3000) % output.length].value,
   ];
-  debug(1, { index0, coordinates });
   const result = coordinates.reduce((acc, item) => acc + item, 0);
+  debug(1, { index0, coordinates, result });
   return result;
 };
 
@@ -88,7 +88,7 @@ const part2 = () => {
     parseInput().map((item) => ({ ...item, value: item.value * 811589153 })),
     10
   );
-  console.log('part 1:', result);
+  console.log('part 2:', result);
 
   // 14579387544492
 };
