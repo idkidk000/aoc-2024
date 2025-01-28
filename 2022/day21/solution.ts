@@ -78,43 +78,34 @@ const part1 = () => {
 const part2 = () => {
   const monkes = parseInput();
   const root = monkes.get('root') as MonkeInputs;
-  // silly bruteforce attempt while i think about how to do it properly
-  /*   for (let i = 0; true; i += 1000) {
-    const testMonkes = new Map(monkes);
-    testMonkes.set('humn', i);
-    const [left, right] = solve(testMonkes, root.left, root.right);
-    debug(1, { i, left, right });
-    if (left === right) {
-      console.log('part 2:', i);
-      return;
-    }
-  } */
-  // right is unaffected by humn. left seems linear. unconstrained binary search because ugh maths
-  let [low, high] = [0n, 1000n];
-  while (low < high) {
-    const mid = (low + high) / 2n;
-    const testMonkes = new Map(monkes);
-    testMonkes.set('humn', mid);
-    const [left, right] = solve(testMonkes, root.left, root.right);
-    debug(2, { high, low, mid, left, right });
-    if (right === left) {
-      debug(1, 'found', { high, low, mid, left, right });
-      console.log('part 2:', mid);
-      return;
-    } else if (left > right) {
-      low = mid + 1n;
-    } else if (left < right) {
-      high = mid; /* - 1n; */
-    }
-    if (low >= high) {
-      if (left > right) {
+  // right is unaffected by humn. left seems linear
+  // unconstrained binary search because ugh maths
+  const binarySearch = () => {
+    let [low, high] = [0n, 1000n];
+    while (low < high) {
+      const mid = (low + high) / 2n;
+      const testMonkes = new Map(monkes);
+      testMonkes.set('humn', mid);
+      const [left, right] = solve(testMonkes, root.left, root.right);
+      debug(2, { high, low, mid, left, right });
+      if (right === left) {
+        debug(1, 'found', { high, low, mid, left, right });
+        return mid;
+      } else if (left > right) low = mid + 1n;
+      else if (left < right) high = mid; /* - 1n; */
+
+      if (low >= high && left > right) {
         high *= 2n;
         debug(1, 'expand', { high, low, mid, left, right });
-      } else {
-        console.error('o no', { high, low, mid, left, right });
       }
     }
-  }
+    throw new Error('not found');
+  };
+
+  const result = binarySearch();
+  console.log('part 2:', result);
+
+  // 3757272361782n
 };
 
 if (args.part1) part1();
