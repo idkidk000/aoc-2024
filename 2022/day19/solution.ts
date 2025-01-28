@@ -51,8 +51,8 @@ const parseInput = () =>
 
 const solve = (blueprint: Blueprint, moves: number) => {
   /*
-    very heavily based on https://github.com/hyperneutrino/advent-of-code/blob/main/2022/day19p1.py
-    i'd already tried turn-based recursive dfs and stack. this is much better
+    very heavily based on (you might even say "copied from") https://github.com/hyperneutrino/advent-of-code/blob/main/2022/day19p1.py
+    i'd already tried turn-based bfs, recursive dfs, heap queue. this is much better
   */
   interface Inventory {
     ore: number;
@@ -74,11 +74,14 @@ const solve = (blueprint: Blueprint, moves: number) => {
     obsidian: resources.obsidian + robots.obsidian * count,
     geode: resources.geode + robots.geode * count,
   });
-  // remove resources that we can't use to produce more cache hits
-  const pruneResources = (resources: Inventory, remaining: number): Inventory => ({
-    ore: Maths.min(resources.ore, resourceLimits.ore * remaining),
-    clay: Maths.min(resources.clay, resourceLimits.clay * remaining),
-    obsidian: Maths.min(resources.obsidian, resourceLimits.obsidian * remaining),
+  // prune resources that we can't use to produce more cache hits
+  const pruneResources = (resources: Inventory, remaining: number, robots: Inventory): Inventory => ({
+    ore: Maths.min(resources.ore, resourceLimits.ore + (resourceLimits.ore - robots.ore) * (remaining - 1)),
+    clay: Maths.min(resources.clay, resourceLimits.clay + (resourceLimits.clay - robots.clay) * (remaining - 1)),
+    obsidian: Maths.min(
+      resources.obsidian,
+      resourceLimits.obsidian + (resourceLimits.obsidian - robots.obsidian) * (remaining - 1)
+    ),
     geode: resources.geode,
   });
   const dfs = (resources: Inventory, robots: Inventory, remaining: number): number => {
@@ -103,37 +106,42 @@ const solve = (blueprint: Blueprint, moves: number) => {
         );
       const nextRemaining = remaining - delay - 1;
       if (nextRemaining <= 0) continue;
-      const nextResouces = incrementResources(resources, robots, delay + 1);
-      requirements.entries().forEach(([k, v]) => (nextResouces[k] -= v));
+      const nextResources = incrementResources(resources, robots, delay + 1);
+      requirements.entries().forEach(([resourceType, resourceQty]) => (nextResources[resourceType] -= resourceQty));
       maxGeodes = Maths.max(
         maxGeodes,
-        dfs(pruneResources(nextResouces, nextRemaining), { ...robots, [robotType]: robots[robotType] + 1 }, nextRemaining)
+        dfs(
+          pruneResources(nextResources, nextRemaining, robots),
+          { ...robots, [robotType]: robots[robotType] + 1 },
+          nextRemaining
+        )
       );
     }
     cache.set(cacheKey, maxGeodes);
     return maxGeodes;
   };
   const result = dfs({ clay: 0, geode: 0, obsidian: 0, ore: 0 }, { clay: 0, geode: 0, obsidian: 0, ore: 1 }, moves);
-  debug(1, { blueprint, result });
+  debug(1, { blueprint, moves, result });
   return result;
 };
 
 const part1 = () => {
   const blueprints = parseInput();
-  const resultsMap = new Map<number, number>(blueprints.map((item) => [item.id, solve(item, 24)]));
-  console.log(
-    'part 1:',
-    resultsMap.entries().reduce((acc, [k, v]) => acc + k * v, 0)
-  );
+  const result = blueprints.map((item) => item.id * solve(item, 24)).reduce((acc, item) => acc + item, 0);
+  console.log('part 1:', result);
+
+  // 1613
 };
 
 const part2 = () => {
   const blueprints = parseInput();
   const result = blueprints
-    .filter((_, i) => i < 3)
+    .slice(0, 3)
     .map((item) => solve(item, 32))
     .reduce((acc, item) => acc * item, 1);
   console.log('part 2:', result);
+
+  // 46816
 };
 
 if (args.part1) part1();
