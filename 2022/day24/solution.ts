@@ -93,61 +93,68 @@ const simulate = ({ grid, rows, cols, blizzards, start, end }: Input, part2: boo
   // blizzards can occupy the same tile so can't use their coord as a key for storage
   // store them as an array then convert coords to a set after all blizzard moves
   // might need to use a deque class
-  const queue = new Array<QueueEntry>({ position: start, length: 0 });
-  const blizzardPositions = new Set<number>();
-  const currentPositions = new Set<number>();
-  let prevLength = -1;
-  while (queue.length > 0) {
-    const { position, length } = queue.shift()!;
-    if (length > prevLength) {
-      //TODO: blizzard things
-      for (const blizzard of blizzards) {
-        const nextPosition = coordAdd(blizzard, D4[blizzard.d]);
-        // i suppose an oob array access exception is an indicator that i've done something wrong
-        if (grid[nextPosition.r][nextPosition.c] === TileContent.Wall) {
-          if (blizzard.d === Direction.Up) nextPosition.r = rows - 2;
-          else if (blizzard.d === Direction.Right) nextPosition.c = 1;
-          else if (blizzard.d === Direction.Down) nextPosition.r = 1;
-          else if (blizzard.d === Direction.Left) nextPosition.c = cols - 2;
+  // p2 requires a loop where start and end are swapped but blizzard state is preserved
+  let pathLength = 0;
+  for (let i = 0; i < (part2 ? 3 : 1); ++i) {
+    let completed = false;
+    const queue = new Array<QueueEntry>({ position: start, length: pathLength });
+    const blizzardPositions = new Set<number>();
+    const currentPositions = new Set<number>();
+    let prevLength = -1;
+    while (queue.length > 0 && !completed) {
+      const { position, length } = queue.shift()!;
+      if (length > prevLength) {
+        for (const blizzard of blizzards) {
+          // blizzards can't go oob
+          const nextPosition = coordAdd(blizzard, D4[blizzard.d]);
+          if (grid[nextPosition.r][nextPosition.c] === TileContent.Wall) {
+            if (blizzard.d === Direction.Up) nextPosition.r = rows - 2;
+            else if (blizzard.d === Direction.Right) nextPosition.c = 1;
+            else if (blizzard.d === Direction.Down) nextPosition.r = 1;
+            else if (blizzard.d === Direction.Left) nextPosition.c = cols - 2;
+          }
+          [blizzard.r, blizzard.c] = [nextPosition.r, nextPosition.c];
         }
-        [blizzard.r, blizzard.c] = [nextPosition.r, nextPosition.c];
+        debug(2, { blizzards });
+        blizzardPositions.clear();
+        for (const packedCoord of blizzards.map((item) => coordPack(item))) blizzardPositions.add(packedCoord);
+        prevLength = length;
+        debug(1, { qlen: queue.length, positionsLen: currentPositions.size, blizzardsLen: blizzardPositions.size, length });
+        currentPositions.clear();
       }
-      debug(2, { blizzards });
-      blizzardPositions.clear();
-      for (const packedCoord of blizzards.map((item) => coordPack(item))) blizzardPositions.add(packedCoord);
-      prevLength = length;
-      debug(1, { qlen: queue.length, positionsLen: currentPositions.size, blizzardsLen: blizzardPositions.size, length });
-      currentPositions.clear();
+      debug(3, { position, length });
+      // prune duplicate states. path lengths are synchronised so it doesn't matter how we arrived at the current position
+      const packedPosition = coordPack(position);
+      if (currentPositions.has(packedPosition)) continue;
+      currentPositions.add(packedPosition);
+      // wait here if not occuppied by a blizzard
+      if (!blizzardPositions.has(packedPosition)) queue.push({ position, length: length + 1 });
+      // usual walk things
+      for (const nextPosition of D4.map((offset) => coordAdd(position, offset))) {
+        if (
+          blizzardPositions.has(coordPack(nextPosition)) ||
+          nextPosition.r < 0 ||
+          nextPosition.r >= rows ||
+          nextPosition.c < 0 ||
+          nextPosition.c >= cols ||
+          grid[nextPosition.r][nextPosition.c] === TileContent.Wall
+        )
+          continue;
+        if (coordEq(nextPosition, end)) {
+          pathLength = length + 1;
+          completed = true;
+        }
+        queue.push({ position: nextPosition, length: length + 1 });
+      }
     }
-    debug(3, { position, length });
-    // prune duplicate states. path lengths are synchronised so it doesn't matter how we arrived at the current position
-    const packedPosition = coordPack(position);
-    if (currentPositions.has(packedPosition)) continue;
-    currentPositions.add(packedPosition);
-    // wait here if not occuppied by a blizzard
-    if (!blizzardPositions.has(packedPosition)) queue.push({ position, length: length + 1 });
-    // usual walk things
-    for (const nextPosition of D4.map((offset) => coordAdd(position, offset))) {
-      if (
-        blizzardPositions.has(coordPack(nextPosition)) ||
-        nextPosition.r < 0 ||
-        nextPosition.r >= rows ||
-        nextPosition.c < 0 ||
-        nextPosition.c >= cols ||
-        grid[nextPosition.r][nextPosition.c] === TileContent.Wall
-      )
-        continue;
-      if (coordEq(nextPosition, end)) return length + 1;
-      queue.push({ position: nextPosition, length: length + 1 });
-    }
+    debug(1, 'completed', { start, end, pathLength });
+    [start, end] = [end, start];
   }
-  throw new Error('bruh');
+  return pathLength;
 };
 
 const part1 = () => {
-  const input = parseInput();
-  debug(4, input);
-  const result = simulate(input);
+  const result = simulate(parseInput());
   console.log('part 1:', result);
 };
 
