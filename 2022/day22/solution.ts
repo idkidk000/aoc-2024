@@ -105,7 +105,7 @@ const parseInput = (): Props => {
   debug(4, { shape });
   /*
     https://en.wikipedia.org/wiki/Net_(polyhedron)
-    i asked chatgpt to write my cubeNets definition but she couldn't so i made paper cubes instead
+    i asked chatgpt to write my cubeNets definition but she couldn't so i made paper cubes instead. and apparently made a LOT of errors
     example is net 7 rotated 90 anticlockwise
     input is net 9
     i'm skipping the remaining nine
@@ -121,19 +121,19 @@ const parseInput = (): Props => {
       ],
       edges: [
         { from: { r: 0, c: 2, d: 0 }, to: { r: 1, c: 0, d: 0 } },
-        { from: { r: 1, c: 0, d: 0 }, to: { r: 0, c: 2, d: 0 } },
-        { from: { r: 1, c: 1, d: 0 }, to: { r: 0, c: 2, d: 3 } },
-        { from: { r: 0, c: 2, d: 3 }, to: { r: 1, c: 1, d: 0 } },
-        { from: { r: 1, c: 0, d: 3 }, to: { r: 3, c: 1, d: 3 } },
         { from: { r: 0, c: 2, d: 1 }, to: { r: 3, c: 1, d: 2 } },
-        { from: { r: 1, c: 2, d: 1 }, to: { r: 3, c: 1, d: 1 } },
+        { from: { r: 0, c: 2, d: 3 }, to: { r: 1, c: 1, d: 0 } },
+        { from: { r: 1, c: 0, d: 0 }, to: { r: 0, c: 2, d: 0 } },
         { from: { r: 1, c: 0, d: 2 }, to: { r: 2, c: 1, d: 3 } },
+        { from: { r: 1, c: 0, d: 3 }, to: { r: 3, c: 1, d: 3 } },
+        { from: { r: 1, c: 1, d: 0 }, to: { r: 0, c: 2, d: 3 } },
+        { from: { r: 1, c: 2, d: 1 }, to: { r: 3, c: 1, d: 1 } },
         { from: { r: 1, c: 2, d: 2 }, to: { r: 2, c: 1, d: 1 } },
-        { from: { r: 2, c: 1, d: 3 }, to: { r: 1, c: 0, d: 2 } },
         { from: { r: 2, c: 1, d: 1 }, to: { r: 1, c: 2, d: 2 } },
-        { from: { r: 3, c: 1, d: 3 }, to: { r: 1, c: 0, d: 3 } },
-        { from: { r: 3, c: 1, d: 2 }, to: { r: 0, c: 2, d: 1 } },
+        { from: { r: 2, c: 1, d: 3 }, to: { r: 1, c: 0, d: 2 } },
         { from: { r: 3, c: 1, d: 1 }, to: { r: 1, c: 2, d: 1 } },
+        { from: { r: 3, c: 1, d: 2 }, to: { r: 0, c: 2, d: 1 } },
+        { from: { r: 3, c: 1, d: 3 }, to: { r: 1, c: 0, d: 3 } },
       ],
     },
     {
@@ -148,17 +148,17 @@ const parseInput = (): Props => {
         { from: { r: 0, c: 1, d: 0 }, to: { r: 3, c: 0, d: 3 } },
         { from: { r: 0, c: 1, d: 3 }, to: { r: 2, c: 0, d: 3 } },
         { from: { r: 0, c: 2, d: 0 }, to: { r: 3, c: 0, d: 2 } },
-        { from: { r: 0, c: 2, d: 1 }, to: { r: 2, c: 1, d: 2 } },
-        { from: { r: 0, c: 2, d: 2 }, to: { r: 1, c: 1, d: 3 } },
-        { from: { r: 1, c: 1, d: 1 }, to: { r: 2, c: 0, d: 0 } },
-        { from: { r: 1, c: 1, d: 3 }, to: { r: 0, c: 2, d: 2 } },
+        { from: { r: 0, c: 2, d: 1 }, to: { r: 2, c: 1, d: 1 } },
+        { from: { r: 0, c: 2, d: 2 }, to: { r: 1, c: 1, d: 1 } },
+        { from: { r: 1, c: 1, d: 1 }, to: { r: 0, c: 2, d: 2 } },
+        { from: { r: 1, c: 1, d: 3 }, to: { r: 2, c: 0, d: 0 } },
         { from: { r: 2, c: 0, d: 0 }, to: { r: 1, c: 1, d: 3 } },
         { from: { r: 2, c: 0, d: 3 }, to: { r: 0, c: 1, d: 3 } },
-        { from: { r: 2, c: 1, d: 1 }, to: { r: 0, c: 2, d: 3 } },
+        { from: { r: 2, c: 1, d: 1 }, to: { r: 0, c: 2, d: 1 } },
         { from: { r: 2, c: 1, d: 2 }, to: { r: 3, c: 0, d: 1 } },
         { from: { r: 3, c: 0, d: 1 }, to: { r: 2, c: 1, d: 2 } },
         { from: { r: 3, c: 0, d: 2 }, to: { r: 0, c: 2, d: 0 } },
-        { from: { r: 3, c: 0, d: 3 }, to: { r: 2, c: 1, d: 2 } },
+        { from: { r: 3, c: 0, d: 3 }, to: { r: 0, c: 1, d: 0 } },
       ],
     },
   ];
@@ -206,7 +206,17 @@ const parseInput = (): Props => {
   };
   const cubeEdges = findNet(shape);
   for (const edge of cubeEdges) {
-    if (cubeEdges.findIndex((value) => value.to.r === edge.from.r && value.to.c === edge.from.c) === -1)
+    if (
+      cubeEdges.findIndex(
+        (value) =>
+          value.to.r === edge.from.r &&
+          value.to.c === edge.from.c &&
+          value.to.d === edge.from.d &&
+          value.from.r === edge.to.r &&
+          value.from.c === edge.to.c &&
+          value.from.d === edge.to.d
+      ) === -1
+    )
       throw new Error(`unmatched edge ${JSON.stringify(edge)}`);
   }
   debug(4, { shape, cubeEdges });
@@ -238,9 +248,7 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
             const red = 255 - green;
             const blue = 128;
             const char = entry.d === 0 ? '^' : entry.d === 1 ? '>' : entry.d === 2 ? 'v' : '<';
-
             line += `\x1b[48;2;${red};${green};${blue}m${char}\x1b[0m`;
-            // line +=`\x1b[7;${31 + entry.d}m${char}\x1b[0m`
           } else line += grid[r][c];
         }
         output.push(line);
@@ -283,93 +291,39 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
               nextPosition.c = edge.to.c * edgeLength;
 
               // and transform the local coordinates
-              // there's undoubtedly a general solution to this part with way less scope for bugs
-              // but i'm tried
-              if (edge.from.d === (edge.to.d + 2) % 4) {
-                debug(1, 'edge wrap');
-                // travel direction is unchanged
-                // up,left sets local direction coord to edgeLength-1
-                // down,right sets local direction coord to 0
-                // local perpendicular coord is carried through
-                if (direction === Direction.Up) nextPosition.r += edgeLength - 1;
-                else if (direction === Direction.Left) nextPosition.c += edgeLength - 1;
-                if ([Direction.Up, Direction.Down].includes(direction)) nextPosition.c += position.c % edgeLength;
-                else if ([Direction.Left, Direction.Right].includes(direction)) nextPosition.r += position.r % edgeLength;
-              } else if (edge.from.d === edge.to.d) {
-                debug(1, 'edge flip');
-                // travel direction is reversed
-                // local direction coord is carried through
-                // local perpendicular coord is reversed
-                nextDirection = (direction + 2) % 4;
-                if ([Direction.Up, Direction.Down].includes(direction)) {
-                  nextPosition.r += position.r % edgeLength;
-                  nextPosition.c += edgeLength - (position.c % edgeLength) - 1;
-                } else if ([Direction.Left, Direction.Right].includes(direction)) {
-                  nextPosition.c += position.c % edgeLength;
-                  nextPosition.r += edgeLength - (position.r % edgeLength) - 1;
-                }
+              const [localR, localC] = [position.r % edgeLength, position.c % edgeLength];
+              nextDirection = (edge.to.d + 2) % 4;
+              // row
+              if (nextDirection === Direction.Up) nextPosition.r += edgeLength - 1;
+              if (nextDirection === Direction.Right) {
+                if (direction === Direction.Up) nextPosition.r += localC;
+                if (direction === Direction.Right) nextPosition.r += localR;
+                if (direction === Direction.Down) nextPosition.r += edgeLength - localC - 1;
+                if (direction === Direction.Left) nextPosition.r += edgeLength - localR - 1;
+              }
+              if (nextDirection === Direction.Down) nextPosition.r += 0;
+              if (nextDirection === Direction.Left) {
+                if (direction === Direction.Up) nextPosition.r += edgeLength - localC - 1;
+                if (direction === Direction.Right) nextPosition.r += edgeLength - localR - 1;
+                if (direction === Direction.Down) nextPosition.r += localC;
+                if (direction === Direction.Left) nextPosition.r += localR;
+              }
+              //col
+              if (nextDirection === Direction.Up) {
+                if (direction === Direction.Up) nextPosition.c += localC;
+                if (direction === Direction.Right) nextPosition.c += localR;
+                if (direction === Direction.Down) nextPosition.c += edgeLength - localC - 1;
+                if (direction === Direction.Left) nextPosition.c += edgeLength - localR - 1;
+              }
+              if (nextDirection === Direction.Right) nextPosition.c += 0;
+              if (nextDirection === Direction.Down) {
+                if (direction === Direction.Up) nextPosition.c += edgeLength - localC - 1;
+                if (direction === Direction.Right) nextPosition.c += edgeLength - localR - 1;
+                if (direction === Direction.Down) nextPosition.c += localC;
+                if (direction === Direction.Left) nextPosition.c += localR;
+              }
+              if (nextDirection === Direction.Left) nextPosition.c += edgeLength - 1;
 
-                //cw / acw refers to the direction change. i.e up->right=cw. the corresponding edges are up->left=acw
-              } else if ([3, -1].includes(edge.to.d - edge.from.d)) {
-                debug(1, 'edge cw');
-                // turn clockwise
-                // (0,0) top left
-                // direction===Up
-                //   direction is Right (+1)
-                //   local col is 0
-                //   local row is old col
-                // direction===Right
-                //   direction is Down (+1)
-                //   local col is edgeLength-(old row)
-                //   local row is 0
-                // direction===Down
-                //   direction is Left (+1)
-                //   local col is edgeLength-1
-                //   local row is old col
-                // direction===Left
-                //   direction is Up (+1)
-                //   local col is edgeLength-(old row)
-                //   local row is edgeLength -1
-                nextDirection = (direction + 1) % 4;
-                if (direction === Direction.Up) nextPosition.r += position.c % edgeLength;
-                else if (direction === Direction.Right) nextPosition.c += edgeLength - (position.r % edgeLength) - 1;
-                else if (direction === Direction.Down) {
-                  nextPosition.c += edgeLength - 1;
-                  nextPosition.r += position.c % edgeLength;
-                } else if (direction === Direction.Left) {
-                  nextPosition.c += edgeLength - (position.r % edgeLength) - 1;
-                  nextPosition.r += edgeLength - 1;
-                }
-              } else if ([1, -3].includes(edge.to.d - edge.from.d)) {
-                debug(1, 'edge anti');
-                // turn anticlockwise
-                // (0,0) top left
-                // direction===Up
-                //   direction is Left (-1)
-                //   local col is edgeLength-1
-                //   local row is edgeLength-(old local col)
-                // direction===Right
-                //   direction is Up (-1)
-                //   local col is old local row
-                //   local row is edgeLength-1
-                // direction===Down
-                //   direction is Right (-1)
-                //   local col is 0
-                //   local row is edgeLength-(old local col)
-                // direction===Left
-                //   direction is Down (-1)
-                //   local col is old local row
-                //   local row is 0
-                nextDirection = Maths.pmod(direction - 1, 4);
-                if (direction === Direction.Up) {
-                  nextPosition.c += edgeLength - 1;
-                  nextPosition.r += edgeLength - (position.c % edgeLength) - 1;
-                } else if (direction === Direction.Right) {
-                  nextPosition.c += position.r % edgeLength;
-                  nextPosition.r += edgeLength - 1;
-                } else if (direction === Direction.Down) nextPosition.r += edgeLength - (position.c % edgeLength) - 1;
-                else if (direction === Direction.Left) nextPosition.c += position.r % edgeLength;
-              } else throw new Error('bruh');
               debug(1, { position, edgeLength, rows, cols, mapPosition, direction, edge, nextPosition, nextDirection });
             } else debug(1, 'no cube edge found', { position, direction });
           } else debug(1, 'not at an edge', { position, direction });
@@ -421,8 +375,7 @@ const part2 = () => {
   const result = solve(parseInput(), true);
   console.log('part 2:', result);
 
-  // 119182 too high - more bugs
-  // 73214 too high - still more
+  // 15410
 };
 
 if (args.part1) part1();
