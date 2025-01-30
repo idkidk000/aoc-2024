@@ -34,7 +34,7 @@ namespace CoordUtils {
   const colBits = 4; // -1 to 8
   const colAdd = 1;
   const colMask = (1 << colBits) - 1;
-  export const pack = (value: Coord) => (value.r << colBits) + value.c + colAdd;
+  export const pack = (value: Coord) => (value.r << colBits) | (value.c + colAdd);
   export const unpack = (value: number): Coord => ({ r: value >> colBits, c: (value & colMask) - colAdd });
   export const add = (...values: Array<Coord>): Coord =>
     values.reduce((acc, item) => ({ r: acc.r + item.r, c: acc.c + item.c }), { r: 0, c: 0 });
@@ -53,7 +53,6 @@ class CoordSet extends Set<number> {
   override delete(value: Coord | number) {
     return super.delete(typeof value === 'number' ? value : CoordUtils.pack(value));
   }
-  // the missing methods
   update(iterable: Iterable<Coord | number>) {
     for (const value of iterable) this.add(value);
   }
@@ -108,12 +107,20 @@ const simulate = ({ jets, rocks }: Input, iterations: number) => {
   let jetIndex = 0;
   let maxHeight = 0;
 
+  const tryMove = (rock: CoordSet, offset: Coord) => {
+    // create a coordset of rock plus offset
+    const nextRock = new CoordSet(rock.coordValues().map((item) => CoordUtils.add(item, offset)));
+    // moved if !oob && !intersect(lockedCoords)
+    return !nextRock.coordValues().some((item) => item.c < 0 || item.c >= width) && nextRock.isDisjointFrom(lockedCoords)
+      ? nextRock
+      : undefined;
+  };
+
   for (let iteration = 0; iteration < iterations; ++iteration) {
     // prune lockedCoords periodically to help performance
-    if (iteration > 0 && iteration % 100 === 0) {
+    if (iteration > 0 && iteration % 100 === 0)
       // magic number :| maybe lower will also work but i don't think the maximum hole height can be determined ahead of time
       lockedCoords.differenceUpdate(lockedCoords.coordValues().filter((item) => item.r < maxHeight - 50));
-    }
     // create rockCoords set from the next rock offset by spawn offset+maxHeight
     let rockCoords = new CoordSet(
       rocks[iteration % rocks.length].map((item) => CoordUtils.add(item, spawnOffset, { r: maxHeight, c: 0 }))
@@ -123,37 +130,21 @@ const simulate = ({ jets, rocks }: Input, iterations: number) => {
     let moved = true;
     while (moved) {
       moved = false;
-      const jet = jets[jetIndex % jets.length];
-      // create a set of rock coords offset by jet
-      const rockCoordsJet = new CoordSet(rockCoords.coordValues().map((item) => CoordUtils.add(item, jet)));
-      // update rock if in bounds and no intersection with lockedCoords
-      // use !some so we bail early on oob and smaller.isDisjointFrom(larger) so only the rockCoordsJet set is iterated over
-      if (
-        !rockCoordsJet.coordValues().some((item) => item.c < 0 || item.c >= width) &&
-        rockCoordsJet.isDisjointFrom(lockedCoords)
-      )
-        rockCoords = rockCoordsJet;
-      if (args.debug >= 4) debug(4, 'after jet', { jet }, rockCoords.coordValues().toArray());
-      // create a set of rock coords offset by drop
-      const rockCoordsDrop = new CoordSet(rockCoords.coordValues().map((item) => CoordUtils.add(item, { r: -1, c: 0 })));
-      // update rock and set moved flag if in bounds and no intersection with lockedCoords
-      if (
-        !rockCoordsDrop.coordValues().some((item) => item.c < 0 || item.c >= width) &&
-        rockCoordsDrop.isDisjointFrom(lockedCoords)
-      ) {
-        rockCoords = rockCoordsDrop;
+      // try to move according to the jet then gravity
+      rockCoords = tryMove(rockCoords, jets[jetIndex % jets.length]) ?? rockCoords;
+      const rockCoordsDrop = tryMove(rockCoords, { r: -1, c: 0 });
+      if (rockCoordsDrop !== undefined) {
+        rockCoords = rockCoordsDrop!;
         moved = true;
-        if (args.debug >= 4) debug(4, 'after drop', rockCoords.coordValues().toArray());
-        // only increment on move. we'll update it for non-move separately after finalisation
-        ++jetIndex;
       }
+      ++jetIndex;
     }
     // move loop has completed
     if (args.debug >= 2) debug(2, 'locked', { iteration, jetIndex, maxHeight, rockCoords: rockCoords.coordValues().toArray() });
     // push packed rockCoords to lockedCoords
     lockedCoords.update(rockCoords);
     maxHeight = lockedCoords.coordValues().reduce((acc, item) => Maths.max(acc, item.r), -1) + 1;
-    //the important bit. col height differences. this is why i couldn't get my original solution to work for p2
+    // the important bit. col height differences. this is why i couldn't get my original solution to work for p2
     const colHeights = lockedCoords
       .coordValues()
       .reduce((acc, item) => {
@@ -177,8 +168,6 @@ const simulate = ({ jets, rocks }: Input, iterations: number) => {
       // everything from here is in the cache already which will break things
       cache.clear();
     } else cache.set(cacheKey, { iteration, maxHeight });
-    // don't incremeent until we've finalised the move and cache
-    ++jetIndex;
   }
   const result = cycleRowOffset + lockedCoords.coordValues().reduce((acc, item) => Maths.max(acc, item.r), -Infinity) + 1;
   debug(1, { iterations, result });
@@ -188,11 +177,15 @@ const simulate = ({ jets, rocks }: Input, iterations: number) => {
 const part1 = () => {
   const result = simulate(parseInput(), 2022);
   console.log('part 1:', result);
+
+  // 3177
 };
 
 const part2 = () => {
   const result = simulate(parseInput(), 1_000_000_000_000);
   console.log('part 2:', result);
+
+  // 1565517241382
 };
 
 if (args.part1) part1();
