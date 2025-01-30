@@ -144,40 +144,41 @@ const simulate = ({ jets, rocks }: Input, iterations: number) => {
         rockCoords = rockCoordsDrop;
         moved = true;
         if (args.debug >= 4) debug(4, 'after drop', rockCoords.coordValues().toArray());
-      } else {
-        if (args.debug >= 2)
-          debug(2, 'locked', { iteration, jetIndex, maxHeight, rockCoords: rockCoords.coordValues().toArray() });
-        // unable to move. push packed rockCoords to lockedCoords
-        lockedCoords.update(rockCoords);
-        maxHeight = lockedCoords.coordValues().reduce((acc, item) => Maths.max(acc, item.r), -1) + 1;
-        //the important bit. col height differences. this is why i couldn't get my original solution to work for p2
-        const colHeights = lockedCoords
-          .coordValues()
-          .reduce((acc, item) => {
-            acc[item.c] = Maths.max(acc[item.c], item.r);
-            return acc;
-          }, new Array(width).fill(0))
-          .map((item) => maxHeight - item);
-        // probably not the fastest. i'm working off my max val of 50 guesstimate so 6 bits per col
-        const cacheKey = colHeights.reduce(
-          (acc, item, i) => acc + (BigInt(item) << BigInt(i * 6)),
-          BigInt((iteration % rocks.length << 13) + (jetIndex % jets.length)) << 42n
-        );
-        if (cache.has(cacheKey)) {
-          // found the loop. add as much as possible to cycleRowOffset and iteration then simulate the remainder
-          const { iteration: prevIteration, maxHeight: prevMaxHeight } = cache.get(cacheKey)!;
-          const iterationsRemaining = iterations - iteration;
-          const cycleLength = iteration - prevIteration;
-          const multiplier = Maths.floor(iterationsRemaining / cycleLength);
-          cycleRowOffset = multiplier * (maxHeight - prevMaxHeight);
-          debug(1, 'found cycle', { cacheKey, iteration, prevIteration, maxHeight, prevMaxHeight, multiplier, cycleRowOffset });
-          iteration += multiplier * cycleLength;
-          // everything from here is in the cache already which will break things
-          cache.clear();
-        } else cache.set(cacheKey, { iteration, maxHeight });
+        // only increment on move. we'll update it for non-move separately after finalisation
+        ++jetIndex;
       }
-      ++jetIndex;
     }
+    // move loop has completed
+    if (args.debug >= 2) debug(2, 'locked', { iteration, jetIndex, maxHeight, rockCoords: rockCoords.coordValues().toArray() });
+    // push packed rockCoords to lockedCoords
+    lockedCoords.update(rockCoords);
+    maxHeight = lockedCoords.coordValues().reduce((acc, item) => Maths.max(acc, item.r), -1) + 1;
+    //the important bit. col height differences. this is why i couldn't get my original solution to work for p2
+    const colHeights = lockedCoords
+      .coordValues()
+      .reduce((acc, item) => {
+        acc[item.c] = Maths.max(acc[item.c], item.r);
+        return acc;
+      }, new Array(width).fill(0))
+      .map((item) => maxHeight - item);
+    // this is barely faster than two BigInt()s per reduce() call
+    const cacheKey =
+      (BigInt((iteration % rocks.length << 25) | (jetIndex % jets.length << 12) | (colHeights[0] << 6) | colHeights[1]) << 30n) |
+      BigInt((colHeights[2] << 24) | (colHeights[3] << 18) | (colHeights[4] << 12) | (colHeights[5] << 6) | (colHeights[6] << 0));
+    if (cache.has(cacheKey)) {
+      // found the loop. add as much as possible to cycleRowOffset and iteration then simulate the remainder
+      const { iteration: prevIteration, maxHeight: prevMaxHeight } = cache.get(cacheKey)!;
+      const iterationsRemaining = iterations - iteration;
+      const cycleLength = iteration - prevIteration;
+      const multiplier = Maths.floor(iterationsRemaining / cycleLength);
+      cycleRowOffset = multiplier * (maxHeight - prevMaxHeight);
+      debug(1, 'found cycle', { cacheKey, iteration, prevIteration, maxHeight, prevMaxHeight, multiplier, cycleRowOffset });
+      iteration += multiplier * cycleLength;
+      // everything from here is in the cache already which will break things
+      cache.clear();
+    } else cache.set(cacheKey, { iteration, maxHeight });
+    // don't incremeent until we've finalised the move and cache
+    ++jetIndex;
   }
   const result = cycleRowOffset + lockedCoords.coordValues().reduce((acc, item) => Maths.max(acc, item.r), -Infinity) + 1;
   debug(1, { iterations, result });
