@@ -1,5 +1,20 @@
 #!/usr/bin/env -S deno --allow-read
 // #region base aoc template
+class Args {
+  constructor(public filename = 'input.txt', public debug = 0, public part1 = true, public part2 = true) {
+    for (const arg of Deno.args) {
+      const [key, value] = [arg.slice(0, 2), (fallback = 0) => Number(arg.slice(2) || fallback)];
+      if (key === '-d') debug = value(1);
+      else if (key === '-e') filename = `example${arg.slice(2)}.txt`;
+      else if (key === '-i') filename = 'input.txt';
+      else if (key === '-p') [part1, part2] = [(value(0) & 1) === 1, (value(0) & 2) === 2];
+      else throw new Error(`unrecognised arg="${arg}"`);
+    }
+    [this.filename, this.debug, this.part1, this.part2] = [filename, debug, part1, part2];
+    console.log(`args: {filename: "${filename}", debug: ${debug}, part1: ${part1}, part2: ${part2} }`);
+  }
+}
+
 declare global {
   interface Math {
     clamp(value: number, min: number, max: number): number;
@@ -22,173 +37,159 @@ Math.pmod = (value: number, mod: number) => {
 
 const Maths = Math;
 
-class Args {
-  constructor(public filename = 'input.txt', public debug = 0, public part1 = true, public part2 = true) {
-    for (const arg of Deno.args) {
-      const [key, value] = [arg.slice(0, 2), (fallback = 0) => Number(arg.slice(2) || fallback)];
-      if (key === '-d') debug = value(1);
-      else if (key === '-e') filename = `example${arg.slice(2)}.txt`;
-      else if (key === '-i') filename = 'input.txt';
-      else if (key === '-p') [part1, part2] = [(value(0) & 1) === 1, (value(0) & 2) === 2];
-      else throw new Error(`unrecognised arg="${arg}"`);
-    }
-    [this.filename, this.debug, this.part1, this.part2] = [filename, debug, part1, part2];
-    console.log(`args: {filename: "${filename}", debug: ${debug}, part1: ${part1}, part2: ${part2} }`);
-  }
+interface Coord {
+  r: number;
+  c: number;
 }
 
-class Coord {
-  constructor(public r: number, public c: number) {}
-  add = (value: Coord) => new Coord(this.r + value.r, this.c + value.c);
-  eq = (other: Coord) => this.r == other.r && this.c == other.c;
-  // only uncomment if needed since their existance hurts performance
-  /*   sub = (value: Coord) => new Coord(this.r - value.r, this.c - value.c);
-  mul = (value: number) => new Coord(this.r * value, this.c * value);
-  div = (value: number) => new Coord(Maths.floor(this.r / value), Maths.floor(this.c / value)); */
+// deno-lint-ignore no-namespace
+namespace CoordUtils {
+  const colBits = 16;
+  const colAdd = 0;
+  const colMask = (1 << colBits) - 1;
+  export const pack = (value: Coord) => (value.r << colBits) + value.c + colAdd;
+  export const unpack = (value: number): Coord => ({ r: value >> colBits, c: (value & colMask) - colAdd });
+  export const add = (...values: Array<Coord>): Coord =>
+    values.slice(1).reduce((acc, item) => ({ r: acc.r + item.r, c: acc.c + item.c }), values[0]);
+  export const eq = (left: Coord, right: Coord) => left.r === right.r && left.c === right.c;
 }
 
-class Grid {
-  rowCount: number;
-  colCount: number;
-  data: string[]; //grid is flattened into an array of single chars
-  directions = [new Coord(-1, 0), new Coord(0, 1), new Coord(1, 0), new Coord(0, -1)];
-
-  constructor(data: string[]) {
-    [this.rowCount, this.colCount] = [data.length, data[0].length];
-    this.data = data.flatMap((row) => row.split(''));
+class CoordSet extends Set<number> {
+  constructor(iterable?: Iterable<Coord>) {
+    super(iterable ? Array.from(iterable, CoordUtils.pack) : undefined);
   }
-
-  rcToIndex = (r: number, c: number) => r * this.colCount + c;
-  coordToIndex = (coord: Coord) => this.rcToIndex(coord.r, coord.c);
-  indexToCoord = (index: number) => new Coord(Maths.floor(index / this.colCount), index % this.colCount);
-
-  find = (value: string) => this.indexToCoord(this.data.findIndex((v) => v === value)!);
-  findLast = (value: string) => this.indexToCoord(this.data.findLastIndex((v) => v === value)!);
-
-  // good type hints for overloaded methods require ye olde fashionde syntax and the type checking is a disaster
-  oob(coord: Coord): boolean;
-  oob(r: number, c: number): boolean;
-  oob(p0: Coord | number, p1?: number): boolean {
-    if (p0 instanceof Coord) return p0.r < 0 || p0.r >= this.rowCount || p0.c < 0 || p0.c >= this.colCount;
-    if (typeof p1 === 'string') return p0 < 0 || p0 >= this.rowCount || p1 < 0 || p1 >= this.rowCount;
-    throw new Error('bruh');
+  override add(value: Coord | number) {
+    return super.add(typeof value === 'number' ? value : CoordUtils.pack(value));
   }
-
-  set(coord: Coord, value: string): string;
-  set(r: number, c: number, value: string): string;
-  set(p0: Coord | number, p1: string | number, p2?: string): string {
-    if (p0 instanceof Coord && typeof p1 === 'string') return (this.data[this.coordToIndex(p0)] = p1);
-    if (typeof p0 === 'number' && typeof p1 === 'number' && typeof p2 === 'string')
-      return (this.data[this.rcToIndex(p0, p1)] = p2);
-    throw new Error('bruh');
+  override has(value: Coord | number) {
+    return super.has(typeof value === 'number' ? value : CoordUtils.pack(value));
   }
-
-  get(coord: Coord): string;
-  get(r: number, c: number): string;
-  get(p0: Coord | number, p1?: number) {
-    if (p0 instanceof Coord) return this.data[this.coordToIndex(p0)];
-    if (typeof p0 === 'number' && typeof p1 === 'number') return this.data[this.rcToIndex(p0, p1)];
-    throw new Error('bruh');
+  override delete(value: Coord | number) {
+    return super.delete(typeof value === 'number' ? value : CoordUtils.pack(value));
   }
-
-  row = (index: number) => this.data.slice(index * this.colCount, (index + 1) * this.colCount);
-  col = (index: number) => {
-    // faster than array.from() with a callback but much more verbose
-    const result = new Array<string>(this.rowCount);
-    for (let i = 0; i < this.rowCount; ++i) result[i] = this.data[this.rcToIndex(i, index)];
-    return result;
-  };
-  rows = () => {
-    //faster than a generator
-    const result = new Array<[number, string[]]>(this.rowCount);
-    for (let i = 0; i < this.rowCount; ++i) result[i] = [i, this.row(i)];
-    return result;
-  };
-  cols = () => {
-    const result = new Array<[number, string[]]>(this.colCount);
-    for (let i = 0; i < this.colCount; ++i) result[i] = [i, this.col(i)];
-    return result;
-  };
-  print = () => {
-    for (const [r, row] of this.rows()) console.log(`${r.toString().padStart(3, ' ')}: ${row.join('')}`);
-  };
-  rotate = () => {
-    const result = new Array<string>(); //no size since we need to push to it rather than assign
-    for (const [_, col] of this.cols()) result.push(...col);
-    return new Grid(result);
-  };
-}
-
-// similar to unordered_set and unordered_map in c++
-class HashedSet<K, H> {
-  //TODO: make hashfn optional if K has .hash(). might need to be a separate class
-  private map: Map<H, K>;
-  constructor(public hashFn: (key: K) => H, iterable?: Iterable<K>) {
-    if (typeof iterable !== 'undefined') {
-      this.map = new Map<H, K>(Array.from(iterable).map((item) => [this.hashFn(item), item]));
-    } else {
-      this.map = new Map<H, K>();
-    }
+  update(iterable: Iterable<Coord | number>) {
+    for (const value of iterable) this.add(value);
   }
-  add = (key: K) => this.map.set(this.hashFn(key), key);
-  clear = () => this.map.clear();
-  delete = (key: K) => this.map.delete(this.hashFn(key));
-  has = (key: K) => this.map.has(this.hashFn(key));
-  size = () => this.map.size;
-  values = () => this.map.values();
-}
-
-class HashedMap<K, V, H> {
-  // key and value are stored in the private map's value so the unhashed key can be retrieved later
-  private map: Map<H, { key: K; value: V }>;
-  constructor(public hashFn: (key: K) => H, iterable?: Iterable<readonly [K, V]>) {
-    if (typeof iterable !== 'undefined') {
-      this.map = new Map<H, { key: K; value: V }>(Array.from(iterable).map(([key, value]) => [this.hashFn(key), { key, value }]));
-    } else {
-      this.map = new Map<H, { key: K; value: V }>();
-    }
+  differenceUpdate(iterable: Iterable<Coord | number>) {
+    for (const value of iterable) this.delete(value);
   }
-  clear = () => this.map.clear();
-  delete = (key: K) => this.map.delete(this.hashFn(key));
-  get = (key: K) => this.map.get(this.hashFn(key))?.value;
-  has = (key: K) => this.map.has(this.hashFn(key));
-  keys = () => this.map.values().map((v) => v.key);
-  set = (key: K, value: V) => this.map.set(this.hashFn(key), { key, value });
-  size = () => this.map.size;
-  values = () => this.map.values().map((v) => v.value);
+  coordValues() {
+    return super.values().map((item) => CoordUtils.unpack(item));
+  }
 }
 
 class Deque<T> {
   private ring: T[];
-  private front: number = 0;
-  private back: number = 0;
-  constructor(public length: number) {
+  #front: number = 0;
+  #back: number = 0;
+  #length: number;
+  constructor(length: number) {
+    this.#length = length;
     this.ring = new Array<T>(length);
+    Object.defineProperties(this, {
+      pushFront: { value: this.pushFront, enumerable: false },
+      pushBack: { value: this.pushBack, enumerable: false },
+      popFront: { value: this.popFront, enumerable: false },
+      popBack: { value: this.popBack, enumerable: false },
+    });
+  }
+  get size(): number {
+    return (this.#length - this.#front + this.#back) % this.#length;
+  }
+  get empty(): boolean {
+    return this.#front === this.#back;
   }
   pushFront = (...items: T[]) => {
     for (const item of items) {
-      this.front = (this.front - 1 + this.length) % this.length;
-      if (this.front == this.back) throw new Error('bruh');
-      this.ring[this.front] = item;
+      this.#front = (this.#front - 1 + this.#length) % this.#length;
+      if (this.#front == this.#back) throw new Error('bruh');
+      this.ring[this.#front] = item;
     }
   };
   pushBack = (...items: T[]) => {
     for (const item of items) {
-      this.ring[this.back] = item;
-      this.back = (this.back + 1) % this.length;
-      if (this.front == this.back) throw new Error('bruh');
+      this.ring[this.#back] = item;
+      this.#back = (this.#back + 1) % this.#length;
+      if (this.#front == this.#back) throw new Error('bruh');
     }
   };
   popFront = () => {
-    const item = this.ring[this.front];
-    this.front = (this.front + 1) % this.length;
+    const item = this.ring[this.#front];
+    delete this.ring[this.#front];
+    this.#front = (this.#front + 1) % this.#length;
     return item;
   };
   popBack = () => {
-    this.back = (this.back - 1 + this.length) % this.length;
-    return this.ring[this.back];
+    this.#back = (this.#back - 1 + this.#length) % this.#length;
+    const item = this.ring[this.#back];
+    delete this.ring[this.#back];
+    return item;
   };
-  empty = () => this.front == this.back;
+}
+
+class HeapQueue<T> {
+  private heap: T[] = [];
+  #comparator: (a: T, b: T) => number;
+  constructor(comparator: (a: T, b: T) => number) {
+    this.#comparator = comparator;
+    Object.defineProperties(this, {
+      push: { value: this.push, enumerable: false },
+      pop: { value: this.pop, enumerable: false },
+    });
+  }
+  get size(): number {
+    return this.heap.length;
+  }
+  get empty(): boolean {
+    return this.heap.length === 0;
+  }
+  push = (value: T) => {
+    this.heap.push(value);
+    this.#siftUp();
+  };
+  pop = () => {
+    if (this.size === 0) return undefined;
+    const top = this.heap[0];
+    const end = this.heap.pop()!;
+    if (this.size > 0) {
+      this.heap[0] = end;
+      this.#siftDown();
+    }
+    return top;
+  };
+  #siftUp = () => {
+    let idx = this.size - 1;
+    const element = this.heap[idx];
+    while (idx > 0) {
+      const parentIdx = Math.floor((idx - 1) / 2);
+      const parent = this.heap[parentIdx];
+      if (this.#comparator(element, parent) >= 0) break;
+      this.heap[idx] = parent;
+      idx = parentIdx;
+    }
+    this.heap[idx] = element;
+  };
+  #siftDown = () => {
+    let idx = 0;
+    const length = this.size;
+    const element = this.heap[0];
+    while (true) {
+      const leftIdx = 2 * idx + 1;
+      const rightIdx = 2 * idx + 2;
+      let swapIdx = -1;
+
+      if (leftIdx < length && this.#comparator(this.heap[leftIdx], element) < 0) {
+        swapIdx = leftIdx;
+      }
+      if (rightIdx < length && this.#comparator(this.heap[rightIdx], this.heap[swapIdx === -1 ? idx : leftIdx]) < 0) {
+        swapIdx = rightIdx;
+      }
+      if (swapIdx === -1) break;
+      this.heap[idx] = this.heap[swapIdx];
+      idx = swapIdx;
+    }
+    this.heap[idx] = element;
+  };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -197,10 +198,11 @@ const debug = (level: number, ...data: any[]) => {
 };
 
 const args = new Args();
-const input = await Deno.readTextFile(args.filename);
 // #endregion
 
-const parseInput = () => new Grid(input.split('\n').filter((line) => line.trim()));
+const parseInput = () => {};
+
+const solve = () => {};
 
 const part1 = () => {};
 
