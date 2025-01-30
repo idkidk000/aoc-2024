@@ -2,10 +2,15 @@
 // #region base aoc template
 declare global {
   interface Math {
+    gcd(left: number, right: number): number;
     pmod(value: number, mod: number): number;
   }
 }
 
+Math.gcd = (left: number, right: number) => {
+  while (right !== 0) [left, right] = [right, left % right];
+  return left;
+};
 Math.pmod = (value: number, mod: number) => {
   const result = value % mod;
   return result >= 0 ? result : result + mod;
@@ -88,9 +93,8 @@ const parseInput = (): Props => {
       end: column.findLastIndex((value) => value !== TileContent.Void),
     };
   });
-  // cube ugh
-  const edgeLength =
-    rows === (cols / 5) * 2 ? rows / 2 : rows === (cols / 4) * 3 ? rows / 3 : rows === (cols / 3) * 4 ? rows / 4 : rows / 5;
+  // cube net detection
+  const edgeLength = Maths.gcd(rows, cols);
   debug(4, { rows, cols, edgeLength });
   const shape = new Array<Array<1 | 0>>();
   for (let r = 0; r < 5; ++r) {
@@ -103,65 +107,12 @@ const parseInput = (): Props => {
     shape.push(row);
   }
   debug(4, { shape });
-  /*
-    https://en.wikipedia.org/wiki/Net_(polyhedron)
-    i asked chatgpt to write my cubeNets definition but she couldn't so i made paper cubes instead. and apparently made a LOT of errors
-    example is net 7 rotated 90 anticlockwise
-    input is net 9
-    i'm skipping the remaining nine
-  */
-  const cubeNets = [
-    {
-      id: 7,
-      shape: [
-        [0, 0, 1],
-        [1, 1, 1],
-        [0, 1, 0],
-        [0, 1, 0],
-      ],
-      edges: [
-        { from: { r: 0, c: 2, d: 0 }, to: { r: 1, c: 0, d: 0 } },
-        { from: { r: 0, c: 2, d: 1 }, to: { r: 3, c: 1, d: 2 } },
-        { from: { r: 0, c: 2, d: 3 }, to: { r: 1, c: 1, d: 0 } },
-        { from: { r: 1, c: 0, d: 0 }, to: { r: 0, c: 2, d: 0 } },
-        { from: { r: 1, c: 0, d: 2 }, to: { r: 2, c: 1, d: 3 } },
-        { from: { r: 1, c: 0, d: 3 }, to: { r: 3, c: 1, d: 3 } },
-        { from: { r: 1, c: 1, d: 0 }, to: { r: 0, c: 2, d: 3 } },
-        { from: { r: 1, c: 2, d: 1 }, to: { r: 3, c: 1, d: 1 } },
-        { from: { r: 1, c: 2, d: 2 }, to: { r: 2, c: 1, d: 1 } },
-        { from: { r: 2, c: 1, d: 1 }, to: { r: 1, c: 2, d: 2 } },
-        { from: { r: 2, c: 1, d: 3 }, to: { r: 1, c: 0, d: 2 } },
-        { from: { r: 3, c: 1, d: 1 }, to: { r: 1, c: 2, d: 1 } },
-        { from: { r: 3, c: 1, d: 2 }, to: { r: 0, c: 2, d: 1 } },
-        { from: { r: 3, c: 1, d: 3 }, to: { r: 1, c: 0, d: 3 } },
-      ],
-    },
-    {
-      id: 9,
-      shape: [
-        [0, 1, 1],
-        [0, 1, 0],
-        [1, 1, 0],
-        [1, 0, 0],
-      ],
-      edges: [
-        { from: { r: 0, c: 1, d: 0 }, to: { r: 3, c: 0, d: 3 } },
-        { from: { r: 0, c: 1, d: 3 }, to: { r: 2, c: 0, d: 3 } },
-        { from: { r: 0, c: 2, d: 0 }, to: { r: 3, c: 0, d: 2 } },
-        { from: { r: 0, c: 2, d: 1 }, to: { r: 2, c: 1, d: 1 } },
-        { from: { r: 0, c: 2, d: 2 }, to: { r: 1, c: 1, d: 1 } },
-        { from: { r: 1, c: 1, d: 1 }, to: { r: 0, c: 2, d: 2 } },
-        { from: { r: 1, c: 1, d: 3 }, to: { r: 2, c: 0, d: 0 } },
-        { from: { r: 2, c: 0, d: 0 }, to: { r: 1, c: 1, d: 3 } },
-        { from: { r: 2, c: 0, d: 3 }, to: { r: 0, c: 1, d: 3 } },
-        { from: { r: 2, c: 1, d: 1 }, to: { r: 0, c: 2, d: 1 } },
-        { from: { r: 2, c: 1, d: 2 }, to: { r: 3, c: 0, d: 1 } },
-        { from: { r: 3, c: 0, d: 1 }, to: { r: 2, c: 1, d: 2 } },
-        { from: { r: 3, c: 0, d: 2 }, to: { r: 0, c: 2, d: 0 } },
-        { from: { r: 3, c: 0, d: 3 }, to: { r: 0, c: 1, d: 0 } },
-      ],
-    },
-  ];
+  interface CubeNet {
+    id: number;
+    shape: Array<Array<1 | 0>>;
+    edges: Array<{ from: { r: number; c: number; d: number }; to: { r: number; c: number; d: number } }>;
+  }
+  const cubeNets = JSON.parse(Deno.readTextFileSync('cubeNets.json')) as Array<CubeNet>;
   // try each rotation until we have a cubeNet match
   // reflections are also valid too but they're not in the inputs so i'm skipping them
   const findNet = (shape: Array<Array<1 | 0>>) => {
@@ -187,14 +138,11 @@ const parseInput = (): Props => {
           debug(1, 'found', { rotate, shapeStr }, cubeNet);
           let localEdges = [...cubeNet.edges];
           for (let i = 0; i < rotate; ++i) {
-            const maxR = Maths.max(...localEdges.flatMap(({ from, to }) => [from.r, to.r]));
             const maxC = Maths.max(...localEdges.flatMap(({ from, to }) => [from.c, to.c]));
             // detected shape was rotated rotate times clockwise until it matched a cubenet. we need to rotate cubenet's edges *anticlockwise* the same number of times
             localEdges = localEdges.map(({ from, to }) => ({
               from: { r: maxC - from.c, c: from.r, d: Maths.pmod(from.d - 1, 4) },
               to: { r: maxC - to.c, c: to.r, d: Maths.pmod(to.d - 1, 4) },
-              // from: { r: from.c, c: maxR - from.r, d: (from.d + 1) % 4 },
-              // to: { r: to.c, c: maxR - to.r, d: (to.d + 1) % 4 },
             }));
             debug(4, { edgeRotations: i + 1, localEdges });
           }
@@ -205,6 +153,7 @@ const parseInput = (): Props => {
     throw new Error('shape not found');
   };
   const cubeEdges = findNet(shape);
+  // check edge integrity
   for (const edge of cubeEdges) {
     if (
       cubeEdges.findIndex(
@@ -266,12 +215,7 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
         debug(3, { position, offset, i, nextPosition });
 
         if (cubeTime) {
-          /*
-           * check if we're at an edge position.r,c%edgeLength
-           * map position (not nextPosition) to cube tiles
-           * check for corresponding cubeEdges entry
-           * if found, transform direction and coords
-           */
+          // test if we're at a cube tile edge
           if (
             (direction === Direction.Up && position.r % edgeLength === 0) ||
             (direction === Direction.Right && (position.c + 1) % edgeLength === 0) ||
@@ -283,7 +227,7 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
               (item) => item.from.r === mapPosition.r && item.from.c === mapPosition.c && item.from.d === direction
             );
             if (typeof edge !== 'undefined') {
-              // we're at a cube edge
+              // we're at a net edge
               render();
 
               // move to the new cube tile
@@ -293,6 +237,7 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
               // and transform the local coordinates
               const [localR, localC] = [position.r % edgeLength, position.c % edgeLength];
               nextDirection = (edge.to.d + 2) % 4;
+              // using else/ifs makes this very hard to read so i'll take the minor performance hit
               // row
               if (nextDirection === Direction.Up) nextPosition.r += edgeLength - 1;
               if (nextDirection === Direction.Right) {
@@ -345,7 +290,7 @@ const solve = ({ grid, instructions, rowBounds, colBounds, cubeEdges, edgeLength
         if (charAt === TileContent.Empty) {
           position = nextPosition;
           direction = nextDirection;
-          history.push({ ...position, d: direction });
+          if (args.debug > 0) history.push({ ...position, d: direction });
         } else if (charAt === TileContent.Wall) break;
         else
           throw new Error(
