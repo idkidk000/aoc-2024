@@ -27,7 +27,7 @@ const args = new Args();
 
 interface Node {
   flow: number;
-  neighbours: Map<string, number>;
+  neighbours: Map<number, number>;
 }
 
 const parseInput = () => {
@@ -52,7 +52,7 @@ const parseInput = () => {
     .toArray()
     .toSorted((a, b) => a.localeCompare(b));
 
-  const nodeMap = new Map<string, Node>(
+  const nodeMapStr = new Map<string, { flow: number; neighbours: Map<string, number> }>(
     nodesWithFlowRate.map((item) => [item, { flow: allNodes.get(item)!.flow, neighbours: new Map<string, number>() }])
   );
 
@@ -77,32 +77,63 @@ const parseInput = () => {
       }
       debug(3, { left, right, shortest });
       // start node has no flow value - don't add paths back to it
-      if (right !== start) nodeMap.get(left)!.neighbours.set(right, shortest);
-      if (left !== start) nodeMap.get(right)!.neighbours.set(left, shortest);
+      if (right !== start) nodeMapStr.get(left)!.neighbours.set(right, shortest);
+      if (left !== start) nodeMapStr.get(right)!.neighbours.set(left, shortest);
     }
   }
-  debug(3, { nodeMap });
+  debug(3, { nodeMapStr });
 
+  // this is quite dirty, but remap node ids to numbers so their ids can toggle individual bits in the cache key
+  const nodes = nodeMapStr
+    .keys()
+    .toArray()
+    .toSorted((a, b) => a.localeCompare(b));
+  const nodeMap = new Map<number, Node>();
+  for (const [nodeName, nodeInfo] of nodeMapStr.entries()) {
+    const neighbours = new Map<number, number>();
+    for (const [neighbourStr, neighbourCost] of nodeInfo.neighbours.entries())
+      neighbours.set(
+        nodes.findIndex((value) => value === neighbourStr),
+        neighbourCost
+      );
+    nodeMap.set(
+      nodes.findIndex((value) => value === nodeName),
+      { flow: nodeInfo.flow, neighbours }
+    );
+  }
+  debug(1, nodeMap);
   return nodeMap;
 };
 
 const solve = (
-  nodeMap: Map<string, Node>,
+  nodeMap: Map<number, Node>,
   moves = 30,
   // set all valves to closed
-  nodeState: Map<string, boolean> = new Map<string, boolean>(nodeMap.keys().map((item) => [item, false]))
+  nodeState: Map<number, boolean> = new Map<number, boolean>(nodeMap.keys().map((item) => [item, false])),
+  cache?: Map<number, number>
 ) => {
-  const start = 'AA';
+  const start = 0;
   // recursive dfs since there's a lot of state
-  const walk = (node: string, remain: number, score: number = 0): number => {
+  const walk = (node: number, remain: number, score: number = 0): number => {
     if (remain === 1) return score;
     if (remain < 1) throw new Error('bruh');
     if (nodeState.get(node) === false && node !== start) {
+      // key is node, remain, and closed valves
+      const cacheKey =
+        typeof cache !== 'undefined'
+          ? nodeState
+              .entries()
+              .filter(([_, v]) => !v)
+              .reduce((acc, [k, _]) => acc | (1 << k), (node << 26) + (remain << 21))
+          : undefined;
+      if (typeof cache !== 'undefined' && cache.has(cacheKey!)) return score + cache.get(cacheKey!)!;
       // open, walk, close
       nodeState.set(node, true);
-      const highestScore = walk(node, remain - 1, score + nodeMap.get(node)!.flow * (remain - 1));
+      // deliberately not passing score to the walk call so we can memoise the result
+      const nodeScore = walk(node, remain - 1, nodeMap.get(node)!.flow * (remain - 1));
       nodeState.set(node, false);
-      return highestScore;
+      if (typeof cache !== 'undefined') cache.set(cacheKey!, nodeScore);
+      return score + nodeScore;
     } else {
       // wait here until the end
       let highestScore = score;
@@ -130,23 +161,16 @@ const part1 = () => {
 
 const part2 = () => {
   const nodeMap = parseInput();
-  /*
-    i can only think of brute force solves
-
-    try all possible starting combinations of nodeState (start+15 (2**15=32768) nodes) with 26 moves and add the opposite states' result. p2 result would be max value. i don't think there's a memoisation fix since the initial nodeState (and therfore the valves which may not be opened) are unique for each run. maybe the search scope can be narrowed or bad paths can be pruned early
-
-    refactor solve.walk to handle multiple walkers, remove all optimisations (move-based loop is really slow), switch back to a queue (nodeState will make it really slow and use a lot of memory), and push each combination of each walker's possible moves to the queue on each turn (exponential queue growth)
-
-    i don't like either
-  */
+  // brute force unfortunately but memoisation helps a lot. 1m30 -> 0m23
   const resultMap = new Map<number, number>();
-  const nodeState = new Map<string, boolean>(nodeMap.keys().map((item) => [item, false]));
+  const nodeState = new Map<number, boolean>(nodeMap.keys().map((item) => [item, false]));
   const nodeArr = nodeMap.keys().toArray();
   const upper = (1 << (nodeArr.length - 1)) - 1;
+  const cache = new Map<number, number>();
   for (let i = 0; i <= upper; ++i) {
     for (const [j, node] of nodeArr.entries()) nodeState.set(node, ((1 << (j - 1)) & i) > 0);
     debug(2, { i, nodeState, upper });
-    const result = solve(nodeMap, 26, nodeState);
+    const result = solve(nodeMap, 26, nodeState, cache);
     if (i % 1000 === 0) debug(1, Maths.round((1000 / upper) * i) / 10, '%', { i, upper, result });
     resultMap.set(i, result);
   }
