@@ -18,7 +18,7 @@ import {
   Vec3,
   Vec3C,
   Vec3Utils,
-} from '../../.template/_/util.ts';
+} from '../../.template/_/utils.ts';
 
 const parseInput = () =>
   Deno.readTextFileSync(args.filename)

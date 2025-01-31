@@ -1,4 +1,3 @@
-#!/usr/bin/env -S deno --allow-read
 class Args {
   constructor(public filename = 'input.txt', public debug = 0, public part1 = true, public part2 = true) {
     for (const arg of Deno.args) {
@@ -40,7 +39,7 @@ export namespace Maths2 {
     return left;
   }
   export function lcm(...values: Array<number>): number {
-    return values.reduce((acc, item) => (acc * item) / Maths.gcd(acc, item));
+    return values.reduce((acc, item) => (acc * item) / gcd(acc, item));
   }
   export function lerp(left: number, right: number, steps: number, step: number) {
     return left + ((right - left) / steps) * step;
@@ -118,7 +117,7 @@ export class CoordC {
     return (value.r << 16) | value.c;
   }
   static unpack(value: number): CoordC {
-    return new CoordC(value >> 16, value & 65535);
+    return new CoordC(value >> 16, value & 0xffff);
   }
   static offsets = new Array<CoordC>(new CoordC(-1, 0), new CoordC(0, 1), new CoordC(1, 0), new CoordC(0, -1));
 }
@@ -171,7 +170,7 @@ export class Vec2C {
     return (value.x << 16) | value.y;
   }
   static unpack(value: number): Vec2C {
-    return new Vec2C(value >> 16, value & 65535);
+    return new Vec2C(value >> 16, value & 0xffff);
   }
   static offsets = new Array<Vec2C>(new Vec2C(0, -1), new Vec2C(1, 0), new Vec2C(0, 1), new Vec2C(-1, 0));
 }
@@ -230,8 +229,8 @@ export class Vec3C {
   }
   static unpack(value: bigint | number): Vec3C {
     return typeof value === 'bigint'
-      ? new Vec3C(Number(value >> 32n), Number((value >> 16n) & 65535n), Number(value & 65535n))
-      : new Vec3C(value >> 20, (value >> 10) & 1023, value & 1023);
+      ? new Vec3C(Number(value >> 32n), Number((value >> 16n) & 0xffffn), Number(value & 0xffffn))
+      : new Vec3C(value >> 20, (value >> 10) & 0x3ff, value & 0x3ff);
   }
   static offsets = new Array<Vec3C>(
     new Vec3C(-1, 0, 0),
@@ -278,19 +277,21 @@ export class Deque<T> {
     this.#front = (this.#front + 1) % this.#length;
     return value;
   }
-  push(...values: Array<T>): void {
+  push(...values: Array<T>): this {
     for (const value of values) {
       this.queue[this.#back] = value;
       this.#back = (this.#back + 1) % this.#length;
       if (this.#front == this.#back) throw new Error('deque is full');
     }
+    return this;
   }
-  pushFront(...values: Array<T>): void {
+  pushFront(...values: Array<T>): this {
     for (const value of values) {
       this.#front = (this.#front - 1 + this.#length) % this.#length;
       if (this.#front == this.#back) throw new Error('deque is full');
       this.queue[this.#front] = value;
     }
+    return this;
   }
 }
 
@@ -320,11 +321,12 @@ export class HeapQueue<T> {
     }
     return front;
   }
-  push(...values: Array<T>) {
+  push(...values: Array<T>): this {
     for (const value of values) {
       this.queue.push(value);
       this.#siftUp();
     }
+    return this;
   }
   #siftDown() {
     let itemIx = 0;
@@ -365,9 +367,9 @@ export class Grid<T extends string | number | boolean> {
       throw new Error('transformer must be supplied for non-string types');
     const rows = data.split('\n').filter((line) => line.trim());
     this.array = rows
-      .join('')
-      .split('')
-      .map((item) => (transformer !== undefined ? transformer(item) : item)) as Array<T>;
+    .join('')
+    .split('')
+    .map((item) => (transformer !== undefined ? transformer(item) : item)) as Array<T>;
     this.#rows = rows.length;
     this.#cols = rows[0].length;
     Object.defineProperties(this, {
@@ -385,7 +387,7 @@ export class Grid<T extends string | number | boolean> {
     return this.#cols;
   }
   find(predicate: (value: T, index: number, array: Array<T>) => T): Coord | undefined {
-    const result = this.array.findIndex(predicate) % this.#cols;
+    const result = this.array.findIndex(predicate);
     if (result === -1) return undefined;
     return { r: Maths.floor(result / this.#cols), c: result % this.#cols };
   }
@@ -438,8 +440,14 @@ export class TransformedSet<K, T extends number | bigint | string> extends Set<T
 }
 
 export class Counter<T> extends Map<T, number> {
-  add(value: T, quantity: number = 1): this {
-    super.set(value, (super.get(value) ?? 0) + quantity);
+  constructor(iterable?: Iterable<T>) {
+    super();
+    if (iterable === undefined) return;
+    for (const value of iterable) this.add(value, 1);
+    return this;
+  }
+  add(value: T, count: number = 1): this {
+    super.set(value, (super.get(value) ?? 0) + count);
     return this;
   }
 }
