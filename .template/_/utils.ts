@@ -152,6 +152,11 @@ export namespace Vec2Utils {
   }
 }
 
+export interface Line {
+  a: Vec2;
+  b: Vec2;
+}
+
 export class Vec2C {
   constructor(public x: number, public y: number) {}
   add(...values: Array<Vec2C>): Vec2C {
