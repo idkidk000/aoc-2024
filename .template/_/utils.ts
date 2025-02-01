@@ -45,10 +45,8 @@ export namespace Maths2 {
     return left + ((right - left) / steps) * step;
   }
   export function lineIntersect(
-    { x: x0, y: y0 }: Vec2,
-    { x: x1, y: y1 }: Vec2,
-    { x: x2, y: y2 }: Vec2,
-    { x: x3, y: y3 }: Vec2,
+    { a: { x: x0, y: y0 }, b: { x: x1, y: y1 } }: Line,
+    { a: { x: x2, y: y2 }, b: { x: x3, y: y3 } }: Line,
     infinite: boolean = false
   ): Vec2 | undefined {
     const denominator = (x0 - x1) * (y2 - y3) - (y0 - y1) * (x2 - x3);
@@ -256,10 +254,10 @@ export class Deque<T> {
     this.#length = length;
     this.queue = new Array<T>(length);
     Object.defineProperties(this, {
-      pushFront: { value: this.pushFront, enumerable: false },
-      push: { value: this.push, enumerable: false },
-      popFront: { value: this.popFront, enumerable: false },
       pop: { value: this.pop, enumerable: false },
+      popFront: { value: this.popFront, enumerable: false },
+      push: { value: this.push, enumerable: false },
+      pushFront: { value: this.pushFront, enumerable: false },
     });
   }
   get size(): number {
@@ -306,8 +304,8 @@ export class HeapQueue<T> {
   constructor(comparator: (a: T, b: T) => number) {
     this.#comparator = comparator;
     Object.defineProperties(this, {
-      push: { value: this.push, enumerable: false },
       pop: { value: this.pop, enumerable: false },
+      push: { value: this.push, enumerable: false },
     });
   }
   get size(): number {
@@ -372,9 +370,9 @@ export class Grid<T extends string | number | boolean> {
       throw new Error('transformer must be supplied for non-string types');
     const rows = data.split('\n').filter((line) => line.trim());
     this.array = rows
-    .join('')
-    .split('')
-    .map((item) => (transformer !== undefined ? transformer(item) : item)) as Array<T>;
+      .join('')
+      .split('')
+      .map((item) => (transformer !== undefined ? transformer(item) : item)) as Array<T>;
     this.#rows = rows.length;
     this.#cols = rows[0].length;
     Object.defineProperties(this, {
@@ -413,10 +411,10 @@ export class Grid<T extends string | number | boolean> {
   }
 }
 
-export class TransformedSet<K, T extends number | bigint | string> extends Set<T> {
+export class TransformedSet<K extends object, T extends number | bigint | string> extends Set<T> {
   #transformer: (value: K) => T;
   #reverter: ((value: T) => K) | undefined;
-  constructor(transformer: (value: K) => T, reverter: (value: T) => K, iterable?: Iterable<K>) {
+  constructor(transformer: (value: K) => T, reverter?: (value: T) => K, iterable?: Iterable<K>) {
     super(iterable ? Array.from(iterable, transformer) : undefined);
     this.#transformer = transformer;
     this.#reverter = reverter;

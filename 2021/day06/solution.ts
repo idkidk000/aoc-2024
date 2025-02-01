@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno --allow-read
-import { args, debug } from '../../.template/_/utils.ts';
+import { args, debug, Counter } from '../../.template/_/utils.ts';
 
 const parseInput = () =>
   Deno.readTextFileSync(args.filename)
@@ -8,16 +8,14 @@ const parseInput = () =>
     .toArray();
 
 const solve = (input: Array<number>, iterations: number = 80) => {
-  const counter = new Map<number, number>();
-  const updateCounter = (key: number, count: number) => counter.set(key, (counter.get(key) ?? 0) + count);
-  for (const key of input) updateCounter(key, 1);
+  const counter = new Counter<number>(input);
   for (let i = 0; i < iterations; ++i) {
     for (const [key, count] of counter.entries().toArray()) {
-      updateCounter(key, -count);
+      counter.add(key, -count);
       if (key === 0) {
-        updateCounter(6, count);
-        updateCounter(8, count);
-      } else updateCounter(key - 1, count);
+        counter.add(6, count);
+        counter.add(8, count);
+      } else counter.add(key - 1, count);
     }
     debug(1, { i, counter });
   }

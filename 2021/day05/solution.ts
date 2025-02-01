@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno --allow-read
-import { args, Line, Maths, Maths2, Vec2, Vec2Utils } from '../../.template/_/utils.ts';
+import { args, Counter, Line, Maths, Maths2, Vec2Utils } from '../../.template/_/utils.ts';
 
 const parseInput = (): Array<Line> =>
   Deno.readTextFileSync(args.filename)
@@ -17,18 +17,17 @@ const parseInput = (): Array<Line> =>
     .toArray();
 
 const solve = (lines: Array<Line>, diagonal: boolean = false) => {
-  const positions = new Map<number, number>();
+  const counter = new Counter<number>();
   for (const line of lines) {
     if (!diagonal && line.a.x !== line.b.x && line.a.y !== line.b.y) continue;
     const steps = Maths.max(Maths.abs(line.a.x - line.b.x), Maths.abs(line.a.y - line.b.y));
     for (let i = 0; i <= steps; ++i) {
       const x = Maths2.lerp(line.a.x, line.b.x, steps, i);
       const y = Maths2.lerp(line.a.y, line.b.y, steps, i);
-      const packed = Vec2Utils.pack({ x, y });
-      positions.set(packed, (positions.get(packed) ?? 0) + 1);
+      counter.add(Vec2Utils.pack({ x, y }));
     }
   }
-  const result = positions
+  const result = counter
     .values()
     .filter((item) => item > 1)
     .toArray().length;
