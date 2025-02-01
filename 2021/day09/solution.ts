@@ -3,10 +3,7 @@ import { args, debug, Coord, CoordUtils, Deque, Grid, TransformedSet } from '../
 
 const parseInput = () => new Grid(Deno.readTextFileSync(args.filename), (value) => Number(value));
 
-const part1 = () => {
-  const grid = parseInput();
-
-  let result = 0;
+const findLowPoints = (grid: Grid<number>, hook: (data: { r: number; c: number; value: number }) => void) => {
   for (let r = 0; r < grid.rows; ++r) {
     for (let c = 0; c < grid.cols; ++c) {
       const value = grid.get({ r, c })!;
@@ -16,30 +13,21 @@ const part1 = () => {
           .filter((item) => !grid.oob(item))
           .every((item) => grid.get(item)! > value)
       )
-        result += value + 1;
+        hook({ r, c, value });
     }
   }
+};
 
+const part1 = () => {
+  let result = 0;
+  findLowPoints(parseInput(), ({ value }) => (result += value + 1));
   console.log('part 1:', result);
 };
 
 const part2 = () => {
   const grid = parseInput();
-
-  // find low points per part 1
-  const lowPoints = new TransformedSet<Coord, number>(CoordUtils.pack, CoordUtils.unpack);
-  for (let r = 0; r < grid.rows; ++r) {
-    for (let c = 0; c < grid.cols; ++c) {
-      const value = grid.get({ r, c })!;
-      if (
-        CoordUtils.offsets
-          .map((item) => CoordUtils.add({ r, c }, item))
-          .filter((item) => !grid.oob(item))
-          .every((item) => grid.get(item)! > value)
-      )
-        lowPoints.add({ r, c });
-    }
-  }
+  const lowPoints = new Array<Coord>();
+  findLowPoints(grid, ({ r, c }) => lowPoints.push({ r, c }));
 
   // loop over and region walk
   const queue = new Deque<Coord>(grid.rows * grid.cols);
@@ -47,7 +35,7 @@ const part2 = () => {
   const region = new TransformedSet<Coord, number>(CoordUtils.pack, CoordUtils.unpack);
   const regionSizes = new Array<number>();
 
-  for (const lowPoint of lowPoints.originalValues()) {
+  for (const lowPoint of lowPoints) {
     queue.push(lowPoint);
     while (!queue.empty) {
       const position = queue.popFront()!;

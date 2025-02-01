@@ -98,6 +98,16 @@ export namespace CoordUtils {
     return { r: (value >> width) - offset, c: (value & mask) - offset };
   }
   export const offsets = new Array<Coord>({ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 });
+  export const offsets8 = new Array<Coord>(
+    { r: -1, c: 0 },
+    { r: -1, c: 1 },
+    { r: 0, c: 1 },
+    { r: 1, c: 1 },
+    { r: 1, c: 0 },
+    { r: 1, c: -1 },
+    { r: 0, c: -1 },
+    { r: -1, c: -1 }
+  );
 }
 
 export class CoordC {
@@ -381,9 +391,12 @@ export class Grid<T extends string | number | boolean> {
     Object.defineProperties(this, {
       find: { value: this.find, enumerable: false },
       findLast: { value: this.findLast, enumerable: false },
+      findAll: { value: this.findAll, enumerable: false },
+      forEach: { value: this.forEach, enumerable: false },
       get: { value: this.get, enumerable: false },
       oob: { value: this.oob, enumerable: false },
       set: { value: this.set, enumerable: false },
+      toStringArray: { value: this.toStringArray, enumerable: false },
     });
   }
   get rows() {
@@ -392,26 +405,48 @@ export class Grid<T extends string | number | boolean> {
   get cols() {
     return this.#cols;
   }
-  find(predicate: (value: T, index: number, array: Array<T>) => T): Coord | undefined {
+  get size() {
+    return this.#rows * this.#cols;
+  }
+  //FIXME: predicate indices need mapping to coords. or maybe coord should be an extra param
+  find(predicate: (value: T, index: number, array: Array<T>) => boolean): Coord | undefined {
     const result = this.array.findIndex(predicate);
     if (result === -1) return undefined;
     return { r: Maths.floor(result / this.#cols), c: result % this.#cols };
   }
-  findLast(predicate: (value: T, index: number, array: Array<T>) => T): Coord | undefined {
+  findLast(predicate: (value: T, index: number, array: Array<T>) => boolean): Coord | undefined {
     const result = this.array.findLastIndex(predicate);
     if (result === -1) return undefined;
     return { r: Maths.floor(result / this.#cols), c: result % this.#cols };
   }
-  get(index: Coord): T | undefined {
-    return this.array.at(index.r * this.#cols + index.c);
+  *findAll(predicate: (value: T, index: number, array: Array<T>) => boolean): Generator<Coord, void, void> {
+    for (let i = 0; i < this.size; ++i) {
+      if (predicate(this.array[i], i, this.array)) yield { r: Maths.floor(i / this.#cols), c: i % this.#cols };
+    }
+  }
+  forEach(callbackfn: (value: T, index: number, array: T[]) => void): void {
+    return this.array.forEach(callbackfn);
+  }
+  get(index: Coord | number): T | undefined {
+    return this.array.at(typeof index === 'number' ? index : index.r * this.#cols + index.c);
   }
   oob(index: Coord): boolean {
     return index.r < 0 || index.r >= this.#rows || index.c < 0 || index.c >= this.#cols;
   }
-  set(index: Coord, value: T): this {
-    this.array[index.r * this.#cols + index.c] = value;
+  set(index: Coord | number, value: T): this {
+    this.array[typeof index === 'number' ? index : index.r * this.#cols + index.c] = value;
     return this;
   }
+  toStringArray(): Array<string> {
+    const result = new Array<string>();
+    for (let r = 0; r < this.#rows; ++r) {
+      result.push(this.array.slice(r * this.#cols, (r + 1) * this.#cols).join(''));
+    }
+    return result;
+  }
+  // indexToCoord(index: number): Coord {
+  //   return { r: Maths.floor(index / this.#cols), c: index % this.#cols };
+  // }
 }
 
 export class TransformedSet<K extends object, T extends number | bigint | string> extends Set<T> {
@@ -455,6 +490,9 @@ export class Counter<T> extends Map<T, number> {
   add(value: T, count: number = 1): this {
     super.set(value, (super.get(value) ?? 0) + count);
     return this;
+  }
+  override get(key: T): number {
+    return super.get(key) ?? 0;
   }
 }
 
