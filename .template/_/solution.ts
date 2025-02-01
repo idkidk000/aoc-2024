@@ -11,7 +11,7 @@ import {
   HeapQueue,
   Line,
   Maths,
-  Maths2,
+  MathsUtils,
   TransformedSet,
   Vec2,
   Vec2C,

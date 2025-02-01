@@ -30,9 +30,12 @@ export function debug(level: number, ...data: Array<any>): void {
 export const Maths = Math;
 
 // deno-lint-ignore no-namespace
-export namespace Maths2 {
+export namespace MathsUtils {
   export function clamp(value: number, min: number, max: number): number {
     return Maths.max(Maths.min(value, max), min);
+  }
+  export function factorial(value: number): number | undefined {
+    return value < 0 ? undefined : value === 0 ? 1 : value * factorial(value - 1)!;
   }
   export function gcd(left: number, right: number): number {
     while (right !== 0) [left, right] = [right, left % right];
@@ -454,3 +457,15 @@ export class Counter<T> extends Map<T, number> {
     return this;
   }
 }
+
+// deno-lint-ignore no-namespace
+export namespace IterUtils {
+  export function permutations<T>(values: Array<T>): Array<Array<T>> {
+    if (values.length === 0) return new Array<Array<T>>(new Array<T>());
+    return values.flatMap((value, i) =>
+      permutations([...values.slice(0, i), ...values.slice(i + 1)]).map((perm) => [value, ...perm])
+    );
+  }
+}
+
+//TODO: console colour functions. base colours, bright bool, invert bool. rgb with invert bool
