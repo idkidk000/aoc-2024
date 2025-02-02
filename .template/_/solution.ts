@@ -12,6 +12,7 @@ import {
   Line,
   Maths,
   MathsUtils,
+  TransformedMap,
   TransformedSet,
   Vec2,
   Vec2C,

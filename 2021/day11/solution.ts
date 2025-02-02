@@ -6,24 +6,25 @@ const parseInput = () => new Grid(Deno.readTextFileSync(args.filename), (value) 
 const simulate = (grid: Grid<number>, iterations: number, hook: (data: { iteration: number; flashes: number }) => boolean) => {
   const flashed = new TransformedSet<Coord, number>(CoordUtils.pack, CoordUtils.unpack);
   for (let iteration = 0; iteration < iterations; ++iteration) {
-    for (let i = 0; i < grid.size; ++i) grid.set(i, grid.get(i)! + 1);
+    grid.keys().forEach((index) => grid.set(index, (prevValue) => prevValue + 1));
     let changed = true;
     while (changed) {
       changed = false;
-      for (const position of grid
+      grid
         .findAll((value) => value > 9)
-        .filter((item) => !flashed.has(item))
-        .toArray()) {
-        debug(2, { position });
-        for (const neighbour of CoordUtils.offsets8
-          .map((item) => CoordUtils.add(position, item))
-          .filter((item) => !grid.oob(item) && grid.get(item)! <= 9)) {
-          debug(3, { neighbour });
-          grid.set(neighbour, grid.get(neighbour)! + 1);
-          changed = true;
-        }
-        flashed.add(position);
-      }
+        .filter((index) => !flashed.has(index))
+        .forEach((index) => {
+          debug(2, { index });
+          CoordUtils.offsets8
+            .map((offset) => CoordUtils.add(index, offset))
+            .filter((neighbour) => !grid.oob(neighbour) && grid.get(neighbour)! <= 9)
+            .forEach((neighbour) => {
+              debug(3, { neighbour });
+              grid.set(neighbour, (prevValue) => prevValue + 1);
+              changed = true;
+            });
+          flashed.add(index);
+        });
     }
     for (const item of flashed.originalValues()) grid.set(item, 0);
     const flashes = flashed.size;

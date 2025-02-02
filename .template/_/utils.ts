@@ -375,78 +375,93 @@ export class HeapQueue<T> {
 }
 
 export class Grid<T extends string | number | boolean> {
-  #rows: number;
-  #cols: number;
+  readonly rows: number;
+  readonly cols: number;
   private array: Array<T>;
-  constructor(data: string, transformer?: (value: string) => T) {
-    if (transformer === undefined && typeof ('' as T) !== 'string')
-      throw new Error('transformer must be supplied for non-string types');
-    const rows = data.split('\n').filter((line) => line.trim());
-    this.array = rows
-      .join('')
-      .split('')
-      .map((item) => (transformer !== undefined ? transformer(item) : item)) as Array<T>;
-    this.#rows = rows.length;
-    this.#cols = rows[0].length;
-    Object.defineProperties(this, {
-      find: { value: this.find, enumerable: false },
-      findLast: { value: this.findLast, enumerable: false },
-      findAll: { value: this.findAll, enumerable: false },
-      forEach: { value: this.forEach, enumerable: false },
-      get: { value: this.get, enumerable: false },
-      oob: { value: this.oob, enumerable: false },
-      set: { value: this.set, enumerable: false },
-      toStringArray: { value: this.toStringArray, enumerable: false },
-    });
-  }
-  get rows() {
-    return this.#rows;
-  }
-  get cols() {
-    return this.#cols;
-  }
-  get size() {
-    return this.#rows * this.#cols;
-  }
-  //FIXME: predicate indices need mapping to coords. or maybe coord should be an extra param
-  find(predicate: (value: T, index: number, array: Array<T>) => boolean): Coord | undefined {
-    const result = this.array.findIndex(predicate);
-    if (result === -1) return undefined;
-    return { r: Maths.floor(result / this.#cols), c: result % this.#cols };
-  }
-  findLast(predicate: (value: T, index: number, array: Array<T>) => boolean): Coord | undefined {
-    const result = this.array.findLastIndex(predicate);
-    if (result === -1) return undefined;
-    return { r: Maths.floor(result / this.#cols), c: result % this.#cols };
-  }
-  *findAll(predicate: (value: T, index: number, array: Array<T>) => boolean): Generator<Coord, void, void> {
-    for (let i = 0; i < this.size; ++i) {
-      if (predicate(this.array[i], i, this.array)) yield { r: Maths.floor(i / this.#cols), c: i % this.#cols };
+  constructor(data: string, transformer?: (value: string, index: Coord) => T);
+  constructor(data: Array<Array<T>>, transformer?: (value: T, index: Coord) => T);
+  constructor(data: string | Array<Array<T>>, transformer?: (value: string | T, index: Coord) => T) {
+    if (typeof data === 'string') {
+      if (transformer === undefined && typeof ('' as T) !== 'string') throw new Error('transformer required for this type');
+      const rows = data.split('\n').filter((line) => line.trim());
+      [this.rows, this.cols] = [rows.length, rows[0].length];
+      this.array = rows
+        .join('')
+        .split('')
+        .map((value, i) => (transformer !== undefined ? transformer(value, this.#indexToCoord(i)) : value)) as Array<T>;
+    } else {
+      [this.rows, this.cols] = [data.length, data[0].length];
+      this.array = data
+        .flat(1)
+        .map((value, i) => (transformer !== undefined ? transformer(value, this.#indexToCoord(i)) : value));
     }
   }
-  forEach(callbackfn: (value: T, index: number, array: T[]) => void): void {
-    return this.array.forEach(callbackfn);
+  static create<T extends string | number | boolean>(
+    rows: number,
+    cols: number,
+    fill: T,
+    transformer?: (value: T, index: Coord) => T
+  ): Grid<T> {
+    return new Grid<T>(
+      Array.from({ length: rows }, () => new Array(cols).fill(fill)),
+      transformer
+    );
+  }
+  get size() {
+    return this.rows * this.cols;
+  }
+  find(predicate: (value: T, index: Coord) => boolean): Coord | undefined {
+    const result = this.array.findIndex((item, i) => predicate(item, this.#indexToCoord(i)));
+    return result === -1 ? undefined : this.#indexToCoord(result);
+  }
+  findLast(predicate: (value: T, index: Coord) => boolean): Coord | undefined {
+    const result = this.array.findLastIndex((item, i) => predicate(item, this.#indexToCoord(i)));
+    return result === -1 ? undefined : this.#indexToCoord(result);
+  }
+  *findAll(predicate: (value: T, index: Coord) => boolean): Generator<Coord, void, void> {
+    for (let i = 0; i < this.size; ++i) {
+      if (predicate(this.array[i], this.#indexToCoord(i))) yield this.#indexToCoord(i);
+    }
+  }
+  forEach(callbackfn: (index: Coord, value: T) => void): void {
+    for (let i = 0; i < this.size; ++i) callbackfn(this.#indexToCoord(i), this.array[i]);
   }
   get(index: Coord | number): T | undefined {
-    return this.array.at(typeof index === 'number' ? index : index.r * this.#cols + index.c);
+    return this.array.at(typeof index === 'number' ? index : this.#coordToIndex(index));
   }
   oob(index: Coord): boolean {
-    return index.r < 0 || index.r >= this.#rows || index.c < 0 || index.c >= this.#cols;
+    return index.r < 0 || index.r >= this.rows || index.c < 0 || index.c >= this.cols;
   }
-  set(index: Coord | number, value: T): this {
-    this.array[typeof index === 'number' ? index : index.r * this.#cols + index.c] = value;
+  set(index: Coord | number, value: T | ((prevValue: T) => T)): this {
+    const arrayIndex = typeof index === 'number' ? index : this.#coordToIndex(index);
+    this.array[arrayIndex] = value instanceof Function ? value(this.array[arrayIndex]) : value;
     return this;
+  }
+  keys(): ArrayIterator<Coord> {
+    return Array.from({ length: this.size }, (_, i) => this.#indexToCoord(i)).values();
+  }
+  values(): ArrayIterator<T> {
+    return this.array.values();
+  }
+  entries(): IteratorObject<[Coord, T]> {
+    return this.array.entries().map(([index, value]) => [this.#indexToCoord(index), value]);
+  }
+  [Symbol.iterator]() {
+    return this.keys();
   }
   toStringArray(): Array<string> {
     const result = new Array<string>();
-    for (let r = 0; r < this.#rows; ++r) {
-      result.push(this.array.slice(r * this.#cols, (r + 1) * this.#cols).join(''));
+    for (let r = 0; r < this.rows; ++r) {
+      result.push(this.array.slice(r * this.cols, (r + 1) * this.cols).join(''));
     }
     return result;
   }
-  // indexToCoord(index: number): Coord {
-  //   return { r: Maths.floor(index / this.#cols), c: index % this.#cols };
-  // }
+  #indexToCoord(index: number): Coord {
+    return { r: Maths.floor(index / this.cols), c: index % this.cols };
+  }
+  #coordToIndex(index: Coord): number {
+    return index.r * this.cols + index.c;
+  }
 }
 
 export class TransformedSet<K extends object, T extends number | bigint | string> extends Set<T> {
@@ -477,6 +492,35 @@ export class TransformedSet<K extends object, T extends number | bigint | string
   update(iterable: Iterable<K | T>): this {
     for (const value of iterable) this.add(value);
     return this;
+  }
+}
+
+export class TransformedMap<K extends object, T extends number | bigint | string, V> extends Map<T, V> {
+  #transformer: (value: K) => T;
+  #reverter: ((value: T) => K) | undefined;
+  constructor(transformer: (value: K) => T, reverter?: (value: T) => K, iterable?: Iterable<[K, V]>) {
+    super(iterable ? Array.from(iterable, ([k, v]) => [transformer(k), v]) : undefined);
+    this.#transformer = transformer;
+    this.#reverter = reverter;
+  }
+  override set(key: K | T, value: V | ((prevValue: V | undefined) => V)): this {
+    const mapKey = ['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K);
+    return super.set(mapKey, value instanceof Function ? value(super.get(mapKey)) : value);
+  }
+  override get(key: K | T): V | undefined
+  override get(key: K | T, fallback: V): V
+  override get(key: K | T, fallback?: V): V | undefined {
+    return super.get(['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K)) ?? fallback;
+  }
+  override has(key: K | T): boolean {
+    return super.has(['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K));
+  }
+  override delete(key: K | T): boolean {
+    return super.delete(['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K));
+  }
+  originalKeys(): IteratorObject<K, undefined, void> {
+    if (this.#reverter === undefined) throw new Error('reverter is not defined');
+    return super.keys().map((item) => this.#reverter!(item));
   }
 }
 
