@@ -1,3 +1,4 @@
+// #region args
 class Args {
   constructor(public filename = 'input.txt', public debug = 0, public part1 = true, public part2 = true) {
     for (const arg of Deno.args) {
@@ -26,7 +27,9 @@ export function debug(level: number, ...data: Array<any>): void {
       )
     );
 }
+// #endregion
 
+// #region Maths
 export const Maths = Math;
 
 // deno-lint-ignore no-namespace
@@ -68,7 +71,9 @@ export namespace MathsUtils {
     return result >= 0 ? result : result + mod;
   }
 }
+// #endregion
 
+// #region coord
 export interface Coord {
   r: number;
   c: number;
@@ -132,7 +137,9 @@ export class CoordC {
   }
   static offsets = new Array<CoordC>(new CoordC(-1, 0), new CoordC(0, 1), new CoordC(1, 0), new CoordC(0, -1));
 }
+// #endregion
 
+// #region vec2
 export interface Vec2 {
   x: number;
   y: number;
@@ -190,7 +197,9 @@ export class Vec2C {
   }
   static offsets = new Array<Vec2C>(new Vec2C(0, -1), new Vec2C(1, 0), new Vec2C(0, 1), new Vec2C(-1, 0));
 }
+// #endregion
 
+// #region vec3
 export interface Vec3 {
   x: number;
   y: number;
@@ -257,21 +266,17 @@ export class Vec3C {
     new Vec3C(0, 0, 1)
   );
 }
+// #endregion
 
+// #region queues
 export class Deque<T> {
   private queue: Array<T>;
   #front: number = 0;
   #back: number = 0;
-  #length: number;
-  constructor(length: number) {
-    this.#length = length;
-    this.queue = new Array<T>(length);
-    Object.defineProperties(this, {
-      pop: { value: this.pop, enumerable: false },
-      popFront: { value: this.popFront, enumerable: false },
-      push: { value: this.push, enumerable: false },
-      pushFront: { value: this.pushFront, enumerable: false },
-    });
+  #length: number = 1000;
+  constructor(length?: number) {
+    if (length !== undefined) this.#length = length;
+    this.queue = new Array<T>(this.#length);
   }
   get size(): number {
     return (this.#length - this.#front + this.#back) % this.#length;
@@ -297,17 +302,26 @@ export class Deque<T> {
     for (const value of values) {
       this.queue[this.#back] = value;
       this.#back = (this.#back + 1) % this.#length;
-      if (this.#front == this.#back) throw new Error('deque is full');
+      if (this.#front == this.#back) this.#grow();
     }
     return this;
   }
   pushFront(...values: Array<T>): this {
-    for (const value of values) {
+    for (const value of values.toReversed()) {
       this.#front = (this.#front - 1 + this.#length) % this.#length;
-      if (this.#front == this.#back) throw new Error('deque is full');
+      if (this.#front == this.#back) this.#grow();
       this.queue[this.#front] = value;
     }
     return this;
+  }
+  #grow(): void {
+    const growBy = this.#length;
+    const queue = new Array<T>(this.#length + growBy);
+    for (let i = 0; i < this.#back; ++i) queue[i] = this.queue[i];
+    for (let i = this.#front; i < this.#length; ++i) queue[i + growBy] = this.queue[i];
+    this.queue = queue;
+    this.#front += growBy;
+    this.#length += growBy;
   }
 }
 
@@ -316,10 +330,6 @@ export class HeapQueue<T> {
   #comparator: (a: T, b: T) => number;
   constructor(comparator: (a: T, b: T) => number) {
     this.#comparator = comparator;
-    Object.defineProperties(this, {
-      pop: { value: this.pop, enumerable: false },
-      push: { value: this.push, enumerable: false },
-    });
   }
   get size(): number {
     return this.queue.length;
@@ -373,6 +383,7 @@ export class HeapQueue<T> {
     this.queue[itemIx] = item;
   }
 }
+// #endregion
 
 export class Grid<T extends string | number | boolean> {
   readonly rows: number;
@@ -383,7 +394,7 @@ export class Grid<T extends string | number | boolean> {
   constructor(data: string | Array<Array<T>>, transformer?: (value: string | T, index: Coord) => T) {
     if (typeof data === 'string') {
       if (transformer === undefined && typeof ('' as T) !== 'string') throw new Error('transformer required for this type');
-      const rows = data.split('\n').filter((line) => line.trim());
+      const rows = data.split('\n').filter((line) => line.length > 0);
       [this.rows, this.cols] = [rows.length, rows[0].length];
       this.array = rows
         .join('')
@@ -407,7 +418,7 @@ export class Grid<T extends string | number | boolean> {
       transformer
     );
   }
-  get size() {
+  get length() {
     return this.rows * this.cols;
   }
   find(predicate: (value: T, index: Coord) => boolean): Coord | undefined {
@@ -419,12 +430,12 @@ export class Grid<T extends string | number | boolean> {
     return result === -1 ? undefined : this.#indexToCoord(result);
   }
   *findAll(predicate: (value: T, index: Coord) => boolean): Generator<Coord, void, void> {
-    for (let i = 0; i < this.size; ++i) {
+    for (let i = 0; i < this.length; ++i) {
       if (predicate(this.array[i], this.#indexToCoord(i))) yield this.#indexToCoord(i);
     }
   }
   forEach(callbackfn: (index: Coord, value: T) => void): void {
-    for (let i = 0; i < this.size; ++i) callbackfn(this.#indexToCoord(i), this.array[i]);
+    for (let i = 0; i < this.length; ++i) callbackfn(this.#indexToCoord(i), this.array[i]);
   }
   get(index: Coord | number): T | undefined {
     return this.array.at(typeof index === 'number' ? index : this.#coordToIndex(index));
@@ -438,7 +449,7 @@ export class Grid<T extends string | number | boolean> {
     return this;
   }
   keys(): ArrayIterator<Coord> {
-    return Array.from({ length: this.size }, (_, i) => this.#indexToCoord(i)).values();
+    return this.array.keys().map((index) => this.#indexToCoord(index));
   }
   values(): ArrayIterator<T> {
     return this.array.values();
@@ -507,8 +518,8 @@ export class TransformedMap<K extends object, T extends number | bigint | string
     const mapKey = ['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K);
     return super.set(mapKey, value instanceof Function ? value(super.get(mapKey)) : value);
   }
-  override get(key: K | T): V | undefined
-  override get(key: K | T, fallback: V): V
+  override get(key: K | T): V | undefined;
+  override get(key: K | T, fallback: V): V;
   override get(key: K | T, fallback?: V): V | undefined {
     return super.get(['number', 'bigint', 'string'].includes(typeof key) ? (key as T) : this.#transformer(key as K)) ?? fallback;
   }

@@ -46,8 +46,8 @@ const part1 = () => {
 const part2 = () => {
   const grid = parseInput();
   simulate(grid, Infinity, ({ iteration, flashes }) => {
-    if (flashes === grid.size) console.log('part 2:', iteration + 1);
-    return flashes === grid.size;
+    if (flashes === grid.length) console.log('part 2:', iteration + 1);
+    return flashes === grid.length;
   });
 };
 

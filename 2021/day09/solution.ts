@@ -26,7 +26,7 @@ const part2 = () => {
   findLowPoints(grid, ({ r, c }) => lowPoints.push({ r, c }));
 
   // loop over and region walk
-  const queue = new Deque<Coord>(grid.size);
+  const queue = new Deque<Coord>();
   const walked = new TransformedSet<Coord, number>(CoordUtils.pack, CoordUtils.unpack);
   const region = new TransformedSet<Coord, number>(CoordUtils.pack, CoordUtils.unpack);
   const regionSizes = new Array<number>();
