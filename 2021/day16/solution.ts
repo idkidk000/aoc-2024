@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno --allow-read
-import { args, debug } from '../../.template/_/utils.ts';
+import { args, debug, Maths } from '../../.template/_/utils.ts';
 
 const parseInput = () =>
   Deno.readTextFileSync(args.filename)
@@ -38,56 +38,55 @@ const solve = (input: string) => {
       return value;
     };
 
-    const [packetVersion, packetTypeId] = [Number(take(3)), Number(take(3))];
+    const [packetVersion, packetTypeId] = [take(3), take(3)];
     versionSum += packetVersion;
     debug(2, { packetVersion, packetTypeId });
 
     if (packetTypeId === PacketType.Literal) {
-      // Number is 53 bits but only handles up to 32 for bitwise ops
-      let value = 0n;
-      while (true) {
-        const final = take(1) === 0;
+      // Number is 53 bits but only 32 may be used for bitwise ops
+      let [value, final] = [0n, false];
+      do {
+        final = take(1) === 0;
         value <<= 4n;
         value |= BigInt(take(4));
-        if (final) break;
-      }
+      } while (!final);
       debug(1, 'literal', { packetLength, value });
 
-      return { length: packetLength, value };
+      return { length: packetLength, value: Number(value) };
     } else {
       // operator
       const lengthTypeId = take(1);
       const subPacketLength = lengthTypeId === LengthType.Length ? take(15) : -Infinity;
       const subPacketCount = lengthTypeId === LengthType.Count ? take(11) : -Infinity;
       debug(2, 'operator', { subPacketLength, subPacketCount });
-      const subValues = new Array<bigint>();
+      const subValues = new Array<number>();
       let totalSubLength = 0;
-      for (let i = 0; i < subPacketCount || totalSubLength < subPacketLength; ++i) {
+      while (subValues.length < subPacketCount || totalSubLength < subPacketLength) {
         const { length: subLength, value } = parse();
         totalSubLength += subLength;
         subValues.push(value);
       }
-      debug(1, 'operator', packetLength, totalSubLength, subValues, subPacketLength, subPacketCount);
+      debug(1, 'operator', { packetLength, totalSubLength, subValues, subPacketLength, subPacketCount });
       const finalValue =
         packetTypeId === PacketType.Sum
           ? subValues.reduce((acc, item) => acc + item)
           : packetTypeId === PacketType.Product
           ? subValues.reduce((acc, item) => acc * item)
-          : packetTypeId === PacketType.Min // min/max only work on Number
-          ? subValues.reduce((acc, item) => (item < acc ? item : acc))
+          : packetTypeId === PacketType.Min
+          ? Maths.min(...subValues)
           : packetTypeId === PacketType.Max
-          ? subValues.reduce((acc, item) => (item > acc ? item : acc))
+          ? Maths.max(...subValues)
           : packetTypeId === PacketType.Greater
           ? subValues[0] > subValues[1]
-            ? 1n
-            : 0n
+            ? 1
+            : 0
           : packetTypeId === PacketType.Less
           ? subValues[0] < subValues[1]
-            ? 1n
-            : 0n
+            ? 1
+            : 0
           : subValues[0] === subValues[1] //PacketType.Equal
-          ? 1n
-          : 0n;
+          ? 1
+          : 0;
 
       return { length: packetLength + totalSubLength, value: finalValue };
     }

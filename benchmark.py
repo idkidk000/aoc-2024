@@ -19,15 +19,15 @@ for dir_path, dir_names, file_names in sorted(os.walk('.')):
     if not file_name.startswith(FILE_PREFIX): continue
     file_path = os.path.join(dir_path, file_name)
     if not all(x in file_path for x in SEARCH): continue
-    cmd = []
+    cmd = ['./' + file_name]
     match file_name.split('.')[-1]:
       case 'ts' | 'py':
-        cmd = [file_name]
+        pass
       case 'go':
-        cmd = [FILE_PREFIX + '_go']
+        cmd = ['./' + FILE_PREFIX + '_go']
         subprocess.run(['go', 'build', '-o', cmd[0], file_name], cwd=dir_path)
       case 'cpp':
-        cmd = [FILE_PREFIX + '_cpp']
+        cmd = ['./' + FILE_PREFIX + '_cpp']
         subprocess.run(['g++', '-std=c++23', file_name, '-o', cmd[0]], cwd=dir_path)
       case _:
         raise RuntimeError(f'unhandled {file_path}')
